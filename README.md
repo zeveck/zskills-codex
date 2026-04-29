@@ -56,9 +56,11 @@ $CODEX_HOME/skills/
 $CODEX_HOME/zskills-support/
 ```
 
-It does not copy skills, docs, or support scripts into your target project
-repos. Project repos may still contain normal runtime artifacts created by
-workflows, such as:
+It replaces this distribution's own skill directories and support directory,
+but preserves unrelated existing skill directories under `$CODEX_HOME/skills`.
+It does not copy skills, docs, or support scripts into your target project repos.
+Project repos may still contain normal runtime artifacts created by workflows,
+such as:
 
 - `reports/plan-*.md`
 - optional `.codex/zskills-config.json`

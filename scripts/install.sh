@@ -36,13 +36,26 @@ done
 
 mkdir -p "$CODEX_HOME/skills" "$CODEX_HOME/zskills-support"
 
+install_skill_dirs() {
+  local src_dir dst_dir name
+  src_dir="$ROOT/skills"
+  dst_dir="$CODEX_HOME/skills"
+  mkdir -p "$dst_dir"
+  for skill_path in "$src_dir"/*; do
+    [ -d "$skill_path" ] || continue
+    name=$(basename "$skill_path")
+    rm -rf "$dst_dir/$name"
+    cp -R "$skill_path" "$dst_dir/$name"
+  done
+}
+
 if command -v rsync >/dev/null 2>&1; then
-  rsync -a --delete "$ROOT/skills/" "$CODEX_HOME/skills/"
+  install_skill_dirs
   rsync -a --delete "$ROOT/zskills-support/" "$CODEX_HOME/zskills-support/"
 else
-  rm -rf "$CODEX_HOME/skills" "$CODEX_HOME/zskills-support"
+  install_skill_dirs
+  rm -rf "$CODEX_HOME/zskills-support"
   mkdir -p "$CODEX_HOME"
-  cp -R "$ROOT/skills" "$CODEX_HOME/skills"
   cp -R "$ROOT/zskills-support" "$CODEX_HOME/zskills-support"
 fi
 
@@ -66,5 +79,5 @@ for root in roots:
 PY
 
 echo "Installed Z Skills for Codex into $CODEX_HOME"
-echo "Installed skills: $(find "$CODEX_HOME/skills" -maxdepth 2 -name SKILL.md | wc -l | tr -d ' ')"
+echo "Installed Z Skills: $(find "$ROOT/skills" -mindepth 2 -maxdepth 2 -name SKILL.md | wc -l | tr -d ' ')"
 echo "Restart Codex if you need updated skill metadata to be discovered."
