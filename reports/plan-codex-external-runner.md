@@ -146,3 +146,54 @@ Handoff:
 - Next invocation: `run-plan /home/vscode/.codex/zskills-support/plans/codex-external-runner.md finish auto`
 - Expected next phase: Phase 4, Fresh Chunk Execution And Logging.
 - Blockers: none for Phase 4.
+
+## Phase 4: Fresh Chunk Execution And Logging
+
+Status: verified.
+
+Plan: `/home/vscode/.codex/zskills-support/plans/codex-external-runner.md`
+
+Files changed:
+
+- `/home/vscode/.codex/zskills-support/scripts/zskills-runner.sh`
+- `/home/vscode/.codex/zskills-support/tests/runner/run.sh`
+- `/home/vscode/.codex/zskills-support/tests/runner/fake-codex.sh`
+- `/home/vscode/.codex/zskills-support/plans/codex-external-runner.md`
+- `/workspaces/zimulinkCodexZ/reports/plan-codex-external-runner.md`
+
+Implemented:
+
+- Added one fresh child `codex exec` invocation for `run-plan <plan> finish auto`.
+- Added structured runner log directory under configured `runner.log_dir`.
+- Added `chunk-001.events.jsonl`, `chunk-001.stdout.txt`, `chunk-001.last-message.txt`, `chunk-001.summary.json`, and `runner.jsonl`.
+- Added summary fields for command argv, cwd, Codex version, timestamps, exit code, before/after state, gate result placeholder, and stop reason.
+- Added fake Codex binary injection through `CODEX_BIN`.
+- Added child process timeout and idle-timeout enforcement.
+- Added fake success, failure, timeout, and idle-timeout tests.
+
+Verification run:
+
+- `bash -n /home/vscode/.codex/zskills-support/scripts/zskills-runner.sh`
+- `bash -n /home/vscode/.codex/zskills-support/tests/runner/run.sh`
+- `bash -n /home/vscode/.codex/zskills-support/tests/runner/fake-codex.sh`
+- `/home/vscode/.codex/zskills-support/tests/runner/run.sh fake-success`
+- `/home/vscode/.codex/zskills-support/tests/runner/run.sh fake-fail`
+- `/home/vscode/.codex/zskills-support/tests/runner/run.sh fake-timeout`
+- `/home/vscode/.codex/zskills-support/tests/runner/run.sh fake-idle-timeout`
+- `/home/vscode/.codex/zskills-support/tests/runner/run.sh all`
+- Fresh verifier passed Phase 4 with no blocking findings.
+
+Landing state:
+
+- Installed Codex support files updated in place under `/home/vscode/.codex/...`.
+- Repository report update pending commit.
+
+Next phase:
+
+- Phase 5: Post-Chunk Validation And Progress Detection.
+
+Handoff:
+
+- Next invocation: `run-plan /home/vscode/.codex/zskills-support/plans/codex-external-runner.md finish auto`
+- Expected next phase: Phase 5, Post-Chunk Validation And Progress Detection.
+- Blockers: none for Phase 5.
