@@ -131,10 +131,12 @@ zskills-support/tests/runner/run.sh fake-idle-timeout
 
 Upstream source: `github.com/zeveck/zskills`
 
+Upstream tag: `2026.04.0`
+
 Upstream commit: `14dea81da487b2904ea7d69a27295f1869206cdf`
 
 Suggested preview tag for this repo:
 
 ```text
-v0.1.0-zskills-14dea81-codex
+2026.04.0-codex.0
 ```
