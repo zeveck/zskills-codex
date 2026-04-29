@@ -342,3 +342,64 @@ Handoff:
 - Next invocation: `run-plan /home/vscode/.codex/zskills-support/plans/codex-external-runner.md finish auto`
 - Expected next phase: Phase 7, Update Workflow Integration.
 - Blockers: none for Phase 7.
+
+## Phase 7: Update Workflow Integration
+
+Status: verified.
+
+Plan: `/home/vscode/.codex/zskills-support/plans/codex-external-runner.md`
+
+Files changed:
+
+- `/home/vscode/.codex/skills/update-zskills/SKILL.md`
+- `/home/vscode/.codex/skills/zskills-codex/SKILL.md`
+- `/home/vscode/.codex/skills/run-plan/SKILL.md`
+- `/home/vscode/.codex/zskills-support/docs/CODEX_PORT.md`
+- `/home/vscode/.codex/zskills-support/plans/codex-external-runner.md`
+- `/workspaces/zimulinkCodexZ/reports/plan-codex-external-runner.md`
+
+Scope Assessment:
+
+- Phase 7 was limited to active documentation and maintenance workflow integration.
+- No runner runtime behavior changed in this phase.
+- Because active skill metadata changed, Codex may need a restart before updated descriptions or trigger metadata are visible in a new session.
+
+Implemented:
+
+- Updated `update-zskills` to require external runner canaries during maintenance.
+- Updated `update-zskills` to preserve `zskills-runner.sh` and tests when refreshing upstream support assets unless replaced with equivalent or stronger canary coverage.
+- Updated `zskills-codex` to document the implemented runner location, unattended role, safety defaults, terminal stop conditions, validation tests, and restart guidance.
+- Updated `run-plan` to state that unattended `finish auto` is runner-backed and otherwise degrades to a one-chunk handoff.
+- Updated `CODEX_PORT.md` to distinguish Codex-native support scripts from archived upstream material.
+- Updated `CODEX_PORT.md` with the implemented runner contract, terminal stops, and validation canaries.
+
+Verification run:
+
+- `rg` manual checklist over active docs/wrappers for runner canaries, runner location, restart guidance, one-chunk fallback, Codex-native support boundaries, and archived upstream material.
+- `for f in /home/vscode/.codex/zskills-support/scripts/{zskills-runner.sh,zskills-gate.sh,post-run-invariants.sh,land-phase.sh,worktree-add-safe.sh,clear-tracking.sh}; do bash -n "$f" || exit 1; done`
+- `python3 -m json.tool /home/vscode/.codex/zskills-support/config/zskills-config.schema.json >/dev/null`
+- `/home/vscode/.codex/zskills-support/tests/runner/run.sh all`
+- `/home/vscode/.codex/zskills-support/tests/runner/run.sh fake-timeout`
+- `/home/vscode/.codex/zskills-support/tests/runner/run.sh fake-idle-timeout`
+
+Verifier result:
+
+- Fresh verifier reported no findings.
+- Verifier confirmed all Phase 7 acceptance criteria were met.
+- Verifier re-ran runner syntax and canary checks successfully.
+
+Landing state:
+
+- Installed Codex support files updated in place under `/home/vscode/.codex/...`.
+- Repository report update pending commit.
+
+Plan completion:
+
+- All seven phases are complete and verified.
+- External runner work is now integrated into the Codex Z Skills maintenance contract.
+
+Handoff:
+
+- No remaining phases.
+- For future maintenance, use `update-zskills` and run the documented runner canaries.
+- Restart Codex if you need active skill metadata changes to be picked up in a fresh session.
