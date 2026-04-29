@@ -93,3 +93,56 @@ Handoff:
 - Next invocation: `run-plan /home/vscode/.codex/zskills-support/plans/codex-external-runner.md finish auto`
 - Expected next phase: Phase 3, State Inspection, Locking, And Stop Gates.
 - Blockers: none for Phase 3.
+
+## Phase 3: State Inspection, Locking, And Stop Gates
+
+Status: verified.
+
+Plan: `/home/vscode/.codex/zskills-support/plans/codex-external-runner.md`
+
+Files changed:
+
+- `/home/vscode/.codex/zskills-support/scripts/zskills-runner.sh`
+- `/home/vscode/.codex/zskills-support/tests/runner/run.sh`
+- `/home/vscode/.codex/zskills-support/plans/codex-external-runner.md`
+- `/workspaces/zimulinkCodexZ/reports/plan-codex-external-runner.md`
+
+Implemented:
+
+- Added runner preflight gates before future chunk execution.
+- Added per-plan lock acquisition under `.zskills/runner/<plan-slug>.lock` with automatic cleanup on exit.
+- Added refusal for live lock conflicts.
+- Added refusal for `CHERRY_PICK_HEAD`, `MERGE_HEAD`, `REBASE_HEAD`, rebase directories, unresolved conflicts, and `pre-cherry-pick` stash residue.
+- Added `.zskills/tracking/` ignore verification when tracking exists.
+- Added plan/report/tracking path and hash output to status/dry-run resolution.
+- Added direct unattended refusal unless `runner.allow_direct_unattended` or `--allow-direct-unattended` is set.
+- Fixed absolute Git directory handling after tests exposed that relative `.git` paths could inspect the caller repo instead of the target repo.
+- Added initial state extraction and JSON recording for plan/report/tracking state without relying on chat text.
+- Added direct-mode clean-tree enforcement when unattended direct mode is explicitly allowed.
+- Narrowed the direct-mode clean-tree exception to the current runner-owned lock path only.
+
+Verification run:
+
+- `bash -n /home/vscode/.codex/zskills-support/scripts/zskills-runner.sh`
+- `bash -n /home/vscode/.codex/zskills-support/tests/runner/run.sh`
+- `/home/vscode/.codex/zskills-support/tests/runner/run.sh preflight`
+- `/home/vscode/.codex/zskills-support/tests/runner/run.sh all`
+- Manual status smoke test in `/workspaces/zimulinkCodexZ` confirmed plan/report hashes and tracking/report paths are printed.
+- Fresh verifier initially found missing initial state recording; fixed and tested.
+- Fresh verifier then found direct mode allowed with dirty tree; fixed and tested.
+- Final fresh verifier passed Phase 3.
+
+Landing state:
+
+- Installed Codex support files updated in place under `/home/vscode/.codex/...`.
+- Repository report update pending commit.
+
+Next phase:
+
+- Phase 4: Fresh Chunk Execution And Logging.
+
+Handoff:
+
+- Next invocation: `run-plan /home/vscode/.codex/zskills-support/plans/codex-external-runner.md finish auto`
+- Expected next phase: Phase 4, Fresh Chunk Execution And Logging.
+- Blockers: none for Phase 4.
