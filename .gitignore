@@ -1,1 +1,5 @@
-.zskills/tracking/
+.zskills/
+.claude/
+build/
+*.pyc
+__pycache__/
