@@ -197,3 +197,73 @@ Handoff:
 - Next invocation: `run-plan /home/vscode/.codex/zskills-support/plans/codex-external-runner.md finish auto`
 - Expected next phase: Phase 5, Post-Chunk Validation And Progress Detection.
 - Blockers: none for Phase 5.
+
+## Phase 5: Post-Chunk Validation And Progress Detection
+
+Status: verified.
+
+Plan: `/home/vscode/.codex/zskills-support/plans/codex-external-runner.md`
+
+Files changed:
+
+- `/home/vscode/.codex/zskills-support/scripts/zskills-runner.sh`
+- `/home/vscode/.codex/zskills-support/tests/runner/run.sh`
+- `/home/vscode/.codex/zskills-support/tests/runner/fake-codex.sh`
+- `/home/vscode/.codex/zskills-support/plans/codex-external-runner.md`
+- `/workspaces/zimulinkCodexZ/reports/plan-codex-external-runner.md`
+
+Scope Assessment:
+
+- Phase 5 was limited to validating a completed single chunk before any future continuation.
+- No multi-chunk loop, PR canary, or maintenance-doc integration was implemented; those remain Phase 6 and Phase 7 work.
+- Landing behavior remains owned by `run-plan`; the runner validates durable state and gates before permitting another fresh invocation.
+
+Implemented:
+
+- Added post-chunk durable progress validation after child `codex exec` exits successfully.
+- Progress now requires at least one durable signal: plan hash change, report hash change, new `fulfilled.run-plan.*`, or new `handoff.run-plan.*`.
+- Added mandatory handoff enforcement unless the plan tracker is complete.
+- Added derived tracking ID validation so report-only progress cannot bypass verifier marker checks.
+- Added report evidence checks requiring a report with a scope assessment.
+- Added verifier marker checks for `requires.verify-changes`, `step.verify-changes.*.complete`, and `fulfilled.verify-changes`.
+- Added `zskills-gate.sh --mode pre-continue` execution once a tracking ID is derived.
+- Added explicit dirty-artifact blocking through the pre-continue gate and runner dirty-state check.
+- Recorded validation result, reason, progress signals, tracking ID, gate result, and post-run invariant status in `chunk-001.summary.json`.
+- Added fake Codex modes and tests for progress success, no progress, missing handoff, missing report, missing scope assessment, missing verifier markers, and dirty artifacts.
+
+Verification run:
+
+- `bash -n /home/vscode/.codex/zskills-support/scripts/zskills-runner.sh`
+- `bash -n /home/vscode/.codex/zskills-support/tests/runner/run.sh`
+- `bash -n /home/vscode/.codex/zskills-support/tests/runner/fake-codex.sh`
+- `/home/vscode/.codex/zskills-support/tests/runner/run.sh progress-detected`
+- `/home/vscode/.codex/zskills-support/tests/runner/run.sh no-progress-blocks`
+- `/home/vscode/.codex/zskills-support/tests/runner/run.sh missing-handoff-blocks`
+- `/home/vscode/.codex/zskills-support/tests/runner/run.sh missing-report-blocks`
+- `/home/vscode/.codex/zskills-support/tests/runner/run.sh missing-scope-blocks`
+- `/home/vscode/.codex/zskills-support/tests/runner/run.sh missing-verifier-blocks`
+- `/home/vscode/.codex/zskills-support/tests/runner/run.sh dirty-artifact-blocks`
+- `/home/vscode/.codex/zskills-support/tests/runner/run.sh fake-timeout`
+- `/home/vscode/.codex/zskills-support/tests/runner/run.sh fake-idle-timeout`
+- `/home/vscode/.codex/zskills-support/tests/runner/run.sh all`
+
+Verifier result:
+
+- Fresh verifier initially found that the implementation checks were present but blocker coverage was incomplete.
+- Added named tests for missing report, missing scope assessment, missing verifier markers, and dirty artifacts.
+- Fresh verifier re-ran Phase 5 review and reported no blocking findings.
+
+Landing state:
+
+- Installed Codex support files updated in place under `/home/vscode/.codex/...`.
+- Repository report update pending commit.
+
+Next phase:
+
+- Phase 6: Multi-Chunk Canary And Landing Modes.
+
+Handoff:
+
+- Next invocation: `run-plan /home/vscode/.codex/zskills-support/plans/codex-external-runner.md finish auto`
+- Expected next phase: Phase 6, Multi-Chunk Canary And Landing Modes.
+- Blockers: none for Phase 6.
