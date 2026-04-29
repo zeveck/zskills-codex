@@ -267,3 +267,78 @@ Handoff:
 - Next invocation: `run-plan /home/vscode/.codex/zskills-support/plans/codex-external-runner.md finish auto`
 - Expected next phase: Phase 6, Multi-Chunk Canary And Landing Modes.
 - Blockers: none for Phase 6.
+
+## Phase 6: Multi-Chunk Canary And Landing Modes
+
+Status: verified.
+
+Plan: `/home/vscode/.codex/zskills-support/plans/codex-external-runner.md`
+
+Files changed:
+
+- `/home/vscode/.codex/zskills-support/scripts/zskills-runner.sh`
+- `/home/vscode/.codex/zskills-support/tests/runner/run.sh`
+- `/home/vscode/.codex/zskills-support/tests/runner/fake-codex.sh`
+- `/home/vscode/.codex/zskills-support/plans/codex-external-runner.md`
+- `/workspaces/zimulinkCodexZ/reports/plan-codex-external-runner.md`
+
+Scope Assessment:
+
+- Phase 6 was limited to runner canaries and landing-mode/failure coverage.
+- Documentation and maintenance wrapper integration remain Phase 7 work.
+- The canaries use disposable Git repositories and fake Codex child processes; no external remote or GitHub PR is required.
+
+Implemented:
+
+- Added bounded multi-chunk execution over fresh `codex exec` child invocations.
+- Added completion detection from durable plan state and a `runner_stop_reason=complete` terminal state.
+- Added `runner_stop_reason=max-chunks` for bounded incomplete runs.
+- Added per-chunk numbered summaries/logs across multiple chunks.
+- Added post-land gate mode for completed chunks.
+- Added actual `post-run-invariants.sh` invocation for landed/complete chunks with available runner arguments.
+- Added stale git worktree residue refusal before launching child Codex.
+- Added multi-phase fake Codex progress mode that advances one phase per fresh child invocation.
+- Added canaries for multi-chunk completion, max-chunk stop, cherry-pick completion evidence, PR dry-run immutability, and stale worktree refusal.
+- Strengthened the cherry-pick canary to assert final summary `gate_result`, `runner_stop_reason`, and `post_run_invariants_result`.
+
+Verification run:
+
+- `bash -n /home/vscode/.codex/zskills-support/scripts/zskills-runner.sh`
+- `bash -n /home/vscode/.codex/zskills-support/tests/runner/run.sh`
+- `bash -n /home/vscode/.codex/zskills-support/tests/runner/fake-codex.sh`
+- `/home/vscode/.codex/zskills-support/tests/runner/run.sh multi-chunk`
+- `/home/vscode/.codex/zskills-support/tests/runner/run.sh max-chunks`
+- `/home/vscode/.codex/zskills-support/tests/runner/run.sh cherry-pick-canary`
+- `/home/vscode/.codex/zskills-support/tests/runner/run.sh pr-dry-run`
+- `/home/vscode/.codex/zskills-support/tests/runner/run.sh stale-worktree`
+- `/home/vscode/.codex/zskills-support/tests/runner/run.sh preflight`
+- `/home/vscode/.codex/zskills-support/tests/runner/run.sh fake-timeout`
+- `/home/vscode/.codex/zskills-support/tests/runner/run.sh fake-idle-timeout`
+- `/home/vscode/.codex/zskills-support/tests/runner/run.sh all`
+
+Manual review:
+
+- Searched active scripts/docs/wrappers for dangerous bypass and Claude scheduling terms.
+- Active matches were refusal or compatibility text only.
+- Archived upstream references still contain Claude-era cron text, as expected, but they are not active Codex instructions.
+
+Verifier result:
+
+- Fresh verifier initially found missing post-run-invariant execution and thin stale-worktree/cherry-pick assertions.
+- Added actual invariant invocation, stale worktree refusal, stale-worktree test, and stronger final summary assertions.
+- Fresh verifier re-ran Phase 6 review and reported no remaining blockers.
+
+Landing state:
+
+- Installed Codex support files updated in place under `/home/vscode/.codex/...`.
+- Repository report update pending commit.
+
+Next phase:
+
+- Phase 7: Update Workflow Integration.
+
+Handoff:
+
+- Next invocation: `run-plan /home/vscode/.codex/zskills-support/plans/codex-external-runner.md finish auto`
+- Expected next phase: Phase 7, Update Workflow Integration.
+- Blockers: none for Phase 7.
