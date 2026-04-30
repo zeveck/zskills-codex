@@ -743,7 +743,7 @@ External ZSkills runner contract for this chunk:
 - Pipeline id: $PIPELINE_ID
 - Canonical tracking directory: $tracking
 - Tracking id: if $tracking contains a handoff.run-plan.* marker, reuse the newest marker suffix; otherwise use $chunk_tracking_id.
-- Write canonical marker files in the canonical tracking directory, even if implementation happens in a git worktree:
+- Write canonical marker files directly in the canonical tracking directory, with no timestamp or phase subdirectories, even if implementation happens in a git worktree:
   - requires.verify-changes.<tracking-id>
   - step.run-plan.<tracking-id>.implement
   - step.run-plan.<tracking-id>.verify
@@ -755,6 +755,7 @@ External ZSkills runner contract for this chunk:
   - if the plan is complete: step.run-plan.<tracking-id>.land and fulfilled.run-plan.<tracking-id>
 - The report must include a "## Phase" heading, a "Status:" line, tests run, verification result, landing result, remaining phases, and a scope assessment.
 - Mark completed progress tracker rows with exactly "✅ Done" so runner status parsing stays stable.
+- For direct mode, finalize source changes, plan tracker updates, and the report, then commit the scoped files directly on the current branch before exiting. Leave no dirty project artifacts except ignored .zskills tracking/log state.
 - For cherry-pick worktrees, finalize source changes, plan tracker updates, and the report before committing the worktree change. Cherry-pick that scoped commit to the base branch; do not create follow-up base-branch commits except for an explicit conflict/recovery case.
 - For PR worktrees, finalize source changes, plan tracker updates, and the report before pushing/creating the PR. Do not push directly to the base branch.
 - After landing or PR preparation, ensure the main repository has the plan/report updates and canonical markers before exiting.
