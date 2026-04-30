@@ -714,7 +714,7 @@ PY
 
 run_one_chunk() {
   local run_dir="$1" chunk_number="$2"
-  local chunk_label chunk_prefix events_file stdout_file last_message summary_file before_file after_file argv_file version start_time end_time exit_code stop_reason timeout_seconds idle_seconds
+  local chunk_label chunk_prefix events_file stdout_file last_message summary_file before_file after_file argv_file version start_time end_time exit_code stop_reason timeout_seconds idle_seconds child_prompt chunk_tracking_id tracking report plan_path
   chunk_label=$(printf 'chunk-%03d' "$chunk_number")
   chunk_prefix="$run_dir/$chunk_label"
   events_file="$chunk_prefix.events.jsonl"
@@ -726,10 +726,43 @@ run_one_chunk() {
   argv_file="$chunk_prefix.argv.json"
   version=$(codex_version)
   start_time=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  chunk_tracking_id=$(date -u +%Y%m%dT%H%M%SZ)
+  tracking=$(tracking_dir "$REPO_ROOT" "$PIPELINE_ID")
+  report=$(report_path "$REPO_ROOT" "$PLAN_SLUG")
+  plan_path=$(resolve_plan_path "$REPO_ROOT" "$PLAN")
 
   collect_state_file "$before_file"
-  CHILD_CODEX_ARGV=("$CODEX_BIN" "exec" "-C" "$REPO_ROOT" "--sandbox" "$SANDBOX" "--ask-for-approval" "$APPROVAL_POLICY" "--json" "-o" "$last_message")
-  CHILD_CODEX_ARGV+=("${EXTRA_CODEX_ARGS[@]}" "run-plan $PLAN finish auto")
+  child_prompt=$(cat <<EOF
+run-plan $PLAN finish auto
+
+External ZSkills runner contract for this chunk:
+- Execute exactly one incomplete phase from $PLAN, then stop.
+- Repository root: $REPO_ROOT
+- Plan path: $plan_path
+- Report path: $report
+- Pipeline id: $PIPELINE_ID
+- Canonical tracking directory: $tracking
+- Tracking id: if $tracking contains a handoff.run-plan.* marker, reuse the newest marker suffix; otherwise use $chunk_tracking_id.
+- Write canonical marker files in the canonical tracking directory, even if implementation happens in a git worktree:
+  - requires.verify-changes.<tracking-id>
+  - step.run-plan.<tracking-id>.implement
+  - step.run-plan.<tracking-id>.verify
+  - step.run-plan.<tracking-id>.report
+  - step.verify-changes.<tracking-id>.tests-run
+  - step.verify-changes.<tracking-id>.complete
+  - fulfilled.verify-changes.<tracking-id>
+  - if another phase remains: handoff.run-plan.<tracking-id>
+  - if the plan is complete: step.run-plan.<tracking-id>.land and fulfilled.run-plan.<tracking-id>
+- The report must include a "## Phase" heading, a "Status:" line, tests run, verification result, landing result, remaining phases, and a scope assessment.
+- Mark completed progress tracker rows with exactly "✅ Done" so runner status parsing stays stable.
+- For cherry-pick worktrees, finalize source changes, plan tracker updates, and the report before committing the worktree change. Cherry-pick that scoped commit to the base branch; do not create follow-up base-branch commits except for an explicit conflict/recovery case.
+- For PR worktrees, finalize source changes, plan tracker updates, and the report before pushing/creating the PR. Do not push directly to the base branch.
+- After landing or PR preparation, ensure the main repository has the plan/report updates and canonical markers before exiting.
+- Do not commit .zskills tracking files.
+EOF
+)
+  CHILD_CODEX_ARGV=("$CODEX_BIN" "exec" "-C" "$REPO_ROOT" "--add-dir" "/tmp" "--sandbox" "$SANDBOX" "-c" "approval_policy=\"$APPROVAL_POLICY\"" "--json" "-o" "$last_message")
+  CHILD_CODEX_ARGV+=("${EXTRA_CODEX_ARGS[@]}" "$child_prompt")
   python3 - "$argv_file" "${CHILD_CODEX_ARGV[@]}" <<'PY'
 import json, sys
 with open(sys.argv[1], "w", encoding="utf-8") as f:
@@ -901,7 +934,7 @@ if ! command -v "$CODEX_BIN" >/dev/null 2>&1; then
   die "codex executable not found: $CODEX_BIN"
 fi
 
-CODEX_ARGV=("$CODEX_BIN" "exec" "-C" "$REPO_ROOT" "--sandbox" "$SANDBOX" "--ask-for-approval" "$APPROVAL_POLICY")
+CODEX_ARGV=("$CODEX_BIN" "exec" "-C" "$REPO_ROOT" "--add-dir" "/tmp" "--sandbox" "$SANDBOX" "-c" "approval_policy=\"$APPROVAL_POLICY\"")
 if [ "$MODE" = "run-plan" ]; then
   CODEX_ARGV+=("${EXTRA_CODEX_ARGS[@]}" "run-plan $PLAN finish auto")
 fi

@@ -113,6 +113,11 @@ The runner:
   artifacts, stale worktree residue, unsafe git state, child failure, max
   chunks, timeout, or idle timeout.
 
+`runner.sandbox` defaults to `workspace-write`. Some containers do not permit
+the bubblewrap/user-namespace sandbox used by Codex for that mode; in an
+externally isolated canary environment, pass `--sandbox danger-full-access` or
+set `runner.sandbox` accordingly.
+
 ## Verify
 
 Run the core checks:

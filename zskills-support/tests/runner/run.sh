@@ -115,6 +115,8 @@ test_dry_run() {
   grep -q '^max_chunks=3$' "$out"
   grep -q '^log_dir=.zskills/test-logs$' "$out"
   grep -q 'codex exec' "$out"
+  grep -q -- '-c approval_policy="never"' "$out"
+  ! grep -q -- '--ask-for-approval' "$out"
   rm -f "$out"
   [ -z "$(git -C "$repo" status --short)" ]
 }
