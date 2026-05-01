@@ -26,7 +26,7 @@ Default ZSkills landing behavior is acceptable. If no repo config exists, `/run-
 
 | Phase | Status | Notes |
 | --- | --- | --- |
-| 1. Create alpha canary file | ⬜ Not Started | Create `canary-output/phase-1-alpha.txt`, initialize `canary-output/manifest.txt`, create the verification script, and verify phase 1. |
+| 1. Create alpha canary file | ✅ Done | Created `canary-output/phase-1-alpha.txt`, initialized `canary-output/manifest.txt`, created the verification script, and verified phase 1. |
 | 2. Create beta canary file | ⬜ Not Started | Create `canary-output/phase-2-beta.txt`, append it to the manifest, and verify phases 1-2. |
 | 3. Create gamma canary file | ⬜ Not Started | Create `canary-output/phase-3-gamma.txt`, append it to the manifest, and verify phases 1-3. |
 
@@ -150,4 +150,3 @@ git status --short
 
 - If run through an unattended external runner in an environment where Codex `workspace-write` sandboxing is blocked by bubblewrap/user-namespace restrictions, use the runner's documented `--sandbox danger-full-access` option only in an externally isolated disposable environment.
 - If the run uses cherry-pick mode, ensure the plan, report, canary files, and test script all land together for each phase.
-
