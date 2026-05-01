@@ -27,7 +27,7 @@ Default ZSkills landing behavior is acceptable. If no repo config exists, `/run-
 | Phase | Status | Notes |
 | --- | --- | --- |
 | 1. Create alpha canary file | ✅ Done | Created `canary-output/phase-1-alpha.txt`, initialized `canary-output/manifest.txt`, created the verification script, and verified phase 1. |
-| 2. Create beta canary file | ⬜ Not Started | Create `canary-output/phase-2-beta.txt`, append it to the manifest, and verify phases 1-2. |
+| 2. Create beta canary file | ✅ Done | Created `canary-output/phase-2-beta.txt`, appended it to the manifest, and verified phases 1-2. |
 | 3. Create gamma canary file | ⬜ Not Started | Create `canary-output/phase-3-gamma.txt`, append it to the manifest, and verify phases 1-3. |
 
 ## Phase Details
