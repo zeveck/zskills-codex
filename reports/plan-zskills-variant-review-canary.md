@@ -66,3 +66,33 @@ Remaining phases:
 - Phase 5. Produce Final Overview and Run Full Verification
 
 Scope assessment: Phase 2 stayed within the plan's allowed project changes: `zskills-variant-review-canary/`, this report, and the plan progress tracker. It did not modify skills, installer behavior, support scripts, README, existing canary outputs, or unrelated plans.
+
+## Phase
+
+Phase 3. Analyze Codex and CC Adoption Surfaces
+
+Status: Complete
+
+Branch/worktree: current branch in direct mode at `/workspaces/zimulinkCodexZ`
+
+Files changed:
+
+- `zskills-variant-review-canary/manifest.txt`
+- `zskills-variant-review-canary/phase-3-adoption-surfaces.md`
+- `plans/zskills-variant-review-canary.md`
+- `reports/plan-zskills-variant-review-canary.md`
+
+Tests run:
+
+- `bash scripts/test-zskills-variant-review-canary.sh`
+
+Verification result: Passed. The manifest contains phases 1-3 in order, the Phase 3 adoption-surfaces file exists, and the script verified the required headings, exact adoption-surface terms, and Codex-native behavior guidance.
+
+Landing result: Landed by committing the scoped Phase 3 files directly on the current branch in direct mode.
+
+Remaining phases:
+
+- Phase 4. Build the Dev-Change Application Plan
+- Phase 5. Produce Final Overview and Run Full Verification
+
+Scope assessment: Phase 3 stayed within the plan's allowed project changes: `zskills-variant-review-canary/`, this report, and the plan progress tracker. It did not modify skills, installer behavior, support scripts, README, existing canary outputs, or unrelated plans.
