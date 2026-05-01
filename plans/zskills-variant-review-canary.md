@@ -32,7 +32,7 @@ Default ZSkills landing behavior is acceptable. If no repo config exists, `/run-
 | 2. Compare the four variants | ✅ Done | Created the structured comparison matrix for `zskills`, `zskills-cc`, `zskills-codex`, and `zskills-dev`, with local evidence separated from inference and evidence gaps called out. |
 | 3. Analyze Codex and CC adoption surfaces | ✅ Done | Created a focused adoption-surface map for `zskills-codex`, inferred `zskills-cc` touchpoints, shared change types, and divergence risks. |
 | 4. Build the dev-change application plan | ✅ Done | Created a detailed application plan covering intake, classification, CC/Codex strategies, gates, verification, rollout, risks, and release readiness. |
-| 5. Produce final overview and run full verification | ⬜ Not Started | Create the final overview, update the manifest, and verify the complete review packet. |
+| 5. Produce final overview and run full verification | ✅ Done | Created the final overview, updated the manifest, and verified the complete review packet. |
 
 ## Phase Details
 
