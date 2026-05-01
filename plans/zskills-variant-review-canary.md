@@ -29,7 +29,7 @@ Default ZSkills landing behavior is acceptable. If no repo config exists, `/run-
 | Phase | Status | Notes |
 | --- | --- | --- |
 | 1. Create review harness and inventory | ✅ Done | Created the output directory, manifest, verification script, and an evidence inventory for local ZSkills materials. |
-| 2. Compare the four variants | ⬜ Not Started | Create a structured comparison of `zskills`, `zskills-cc`, `zskills-codex`, and `zskills-dev`, with evidence gaps called out. |
+| 2. Compare the four variants | ✅ Done | Created the structured comparison matrix for `zskills`, `zskills-cc`, `zskills-codex`, and `zskills-dev`, with local evidence separated from inference and evidence gaps called out. |
 | 3. Analyze Codex and CC adoption surfaces | ⬜ Not Started | Create a focused analysis of where `zskills-cc` and `zskills-codex` would absorb upstream changes. |
 | 4. Build the dev-change application plan | ⬜ Not Started | Create a non-trivial migration plan for applying `zskills-dev` changes to `zskills-cc` and `zskills-codex`. |
 | 5. Produce final overview and run full verification | ⬜ Not Started | Create the final overview, update the manifest, and verify the complete review packet. |
