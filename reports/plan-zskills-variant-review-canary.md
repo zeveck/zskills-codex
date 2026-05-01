@@ -96,3 +96,32 @@ Remaining phases:
 - Phase 5. Produce Final Overview and Run Full Verification
 
 Scope assessment: Phase 3 stayed within the plan's allowed project changes: `zskills-variant-review-canary/`, this report, and the plan progress tracker. It did not modify skills, installer behavior, support scripts, README, existing canary outputs, or unrelated plans.
+
+## Phase
+
+Phase 4. Build the Dev-Change Application Plan
+
+Status: Complete
+
+Branch/worktree: current branch in direct mode at `/workspaces/zimulinkCodexZ`
+
+Files changed:
+
+- `zskills-variant-review-canary/manifest.txt`
+- `zskills-variant-review-canary/phase-4-dev-change-application-plan.md`
+- `plans/zskills-variant-review-canary.md`
+- `reports/plan-zskills-variant-review-canary.md`
+
+Tests run:
+
+- `bash scripts/test-zskills-variant-review-canary.sh`
+
+Verification result: Passed. The manifest contains phases 1-4 in order, the Phase 4 dev-change application plan exists, and the script verified the required headings, exact terms, change categories, risk terms, and refresh guidance.
+
+Landing result: Landed by committing the scoped Phase 4 files directly on the current branch in direct mode.
+
+Remaining phases:
+
+- Phase 5. Produce Final Overview and Run Full Verification
+
+Scope assessment: Phase 4 stayed within the plan's allowed project changes: `zskills-variant-review-canary/`, this report, and the plan progress tracker. It did not modify skills, installer behavior, support scripts, README, existing canary outputs, or unrelated plans.
