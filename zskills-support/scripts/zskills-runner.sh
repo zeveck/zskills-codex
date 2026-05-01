@@ -144,17 +144,33 @@ marker_state() {
   if [ ! -d "$dir" ]; then
     printf 'tracking_state=missing\n'
     printf 'tracking_marker_count=0\n'
+    printf 'tracking_marker_hashes=\n'
     return
   fi
   printf 'tracking_state=present\n'
-  find "$dir" -maxdepth 1 -type f -printf '%f\n' | sort | awk '
-    BEGIN { count=0; first=1; names="" }
-    { count++; if (!first) names=names ","; names=names $0; first=0 }
-    END {
-      print "tracking_marker_count=" count
-      print "tracking_markers=" names
-    }
-  '
+  python3 - "$dir" <<'PY'
+import hashlib
+import os
+import sys
+
+root = sys.argv[1]
+names = sorted(
+    name for name in os.listdir(root)
+    if os.path.isfile(os.path.join(root, name))
+)
+hashes = []
+for name in names:
+    path = os.path.join(root, name)
+    digest = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(65536), b""):
+            digest.update(chunk)
+    hashes.append(f"{name}:{digest.hexdigest()}")
+
+print(f"tracking_marker_count={len(names)}")
+print("tracking_markers=" + ",".join(names))
+print("tracking_marker_hashes=" + ",".join(hashes))
+PY
 }
 
 state_value() {
@@ -164,6 +180,10 @@ state_value() {
 
 tracking_markers_csv() {
   state_value "$1" "tracking_markers"
+}
+
+tracking_marker_hashes_csv() {
+  state_value "$1" "tracking_marker_hashes"
 }
 
 csv_has_marker() {
@@ -182,6 +202,31 @@ before = set(filter(None, sys.argv[1].split(",")))
 after = set(filter(None, sys.argv[2].split(",")))
 prefix = sys.argv[3]
 matches = sorted(m for m in after - before if m.startswith(prefix))
+if matches:
+    print(matches[-1])
+PY
+}
+
+changed_tracking_marker() {
+  local before_hashes="$1" after_hashes="$2" prefix="$3"
+  python3 - "$before_hashes" "$after_hashes" "$prefix" <<'PY'
+import sys
+
+def parse(value):
+    result = {}
+    for item in filter(None, value.split(",")):
+        name, sep, digest = item.partition(":")
+        if sep:
+            result[name] = digest
+    return result
+
+before = parse(sys.argv[1])
+after = parse(sys.argv[2])
+prefix = sys.argv[3]
+matches = sorted(
+    name for name, digest in after.items()
+    if name.startswith(prefix) and name in before and before[name] != digest
+)
 if matches:
     print(matches[-1])
 PY
@@ -308,21 +353,29 @@ PY
 
 validate_chunk_progress() {
   local run_dir="$1" summary_file="$2" before_file="$3" after_file="$4" chunk_label="$5"
-  local before_plan_hash after_plan_hash before_report_hash after_report_hash before_markers after_markers
-  local new_handoff new_fulfilled tracking_id signals report tracking gate_out invariant_out dirty complete gate_mode
+  local before_plan_hash after_plan_hash before_report_hash after_report_hash before_markers after_markers before_marker_hashes after_marker_hashes
+  local new_handoff changed_handoff valid_handoff new_fulfilled changed_fulfilled valid_fulfilled tracking_id signals report tracking gate_out invariant_out dirty complete gate_mode
   before_plan_hash=$(state_value "$before_file" "plan_hash")
   after_plan_hash=$(state_value "$after_file" "plan_hash")
   before_report_hash=$(state_value "$before_file" "report_hash")
   after_report_hash=$(state_value "$after_file" "report_hash")
   before_markers=$(tracking_markers_csv "$before_file")
   after_markers=$(tracking_markers_csv "$after_file")
+  before_marker_hashes=$(tracking_marker_hashes_csv "$before_file")
+  after_marker_hashes=$(tracking_marker_hashes_csv "$after_file")
   new_handoff=$(new_tracking_marker "$before_markers" "$after_markers" "handoff.run-plan.")
+  changed_handoff=$(changed_tracking_marker "$before_marker_hashes" "$after_marker_hashes" "handoff.run-plan.")
+  valid_handoff="${new_handoff:-$changed_handoff}"
   new_fulfilled=$(new_tracking_marker "$before_markers" "$after_markers" "fulfilled.run-plan.")
+  changed_fulfilled=$(changed_tracking_marker "$before_marker_hashes" "$after_marker_hashes" "fulfilled.run-plan.")
+  valid_fulfilled="${new_fulfilled:-$changed_fulfilled}"
   signals=""
   [ "$before_plan_hash" != "$after_plan_hash" ] && signals="${signals},plan_hash_changed"
   [ "$before_report_hash" != "$after_report_hash" ] && signals="${signals},report_hash_changed"
   [ -n "$new_fulfilled" ] && signals="${signals},new_fulfilled_run_plan"
   [ -n "$new_handoff" ] && signals="${signals},new_handoff_run_plan"
+  [ -n "$changed_fulfilled" ] && signals="${signals},changed_fulfilled_run_plan"
+  [ -n "$changed_handoff" ] && signals="${signals},changed_handoff_run_plan"
   signals=${signals#,}
 
   gate_out="$run_dir/$chunk_label.gate.txt"
@@ -338,18 +391,26 @@ validate_chunk_progress() {
     return 20
   fi
 
-  if [ -n "$new_handoff" ]; then
-    tracking_id=$(tracking_id_from_marker "$new_handoff" "handoff.run-plan.")
-  elif [ -n "$new_fulfilled" ]; then
-    tracking_id=$(tracking_id_from_marker "$new_fulfilled" "fulfilled.run-plan.")
+  if [ -n "$valid_handoff" ]; then
+    tracking_id=$(tracking_id_from_marker "$valid_handoff" "handoff.run-plan.")
+  elif [ -n "$valid_fulfilled" ]; then
+    tracking_id=$(tracking_id_from_marker "$valid_fulfilled" "fulfilled.run-plan.")
   else
     tracking_id=""
   fi
 
-  if [ "$complete" != "true" ] && [ -z "$new_handoff" ]; then
+  if [ "$complete" != "true" ] && [ -z "$valid_handoff" ]; then
     update_summary_validation "$summary_file" "failed" "handoff marker missing after progress" "$tracking_id" "not-run-missing-handoff" "not-run" "$signals"
     echo "validation_failed=handoff marker missing after progress" >&2
     return 21
+  fi
+
+  if [ "$complete" != "true" ] && [ -n "$tracking_id" ]; then
+    if [ -e "$tracking/step.run-plan.$tracking_id.land" ] || [ -e "$tracking/fulfilled.run-plan.$tracking_id" ]; then
+      update_summary_validation "$summary_file" "failed" "final run-plan marker present before plan completion" "$tracking_id" "not-run-premature-final-marker" "not-run" "$signals"
+      echo "validation_failed=final run-plan marker present before plan completion" >&2
+      return 21
+    fi
   fi
 
   if ! validate_report_evidence "$report"; then
@@ -751,8 +812,8 @@ External ZSkills runner contract for this chunk:
   - step.verify-changes.<tracking-id>.tests-run
   - step.verify-changes.<tracking-id>.complete
   - fulfilled.verify-changes.<tracking-id>
-  - if another phase remains: handoff.run-plan.<tracking-id>
-  - if the plan is complete: step.run-plan.<tracking-id>.land and fulfilled.run-plan.<tracking-id>
+  - if another phase remains: handoff.run-plan.<tracking-id>; do not leave step.run-plan.<tracking-id>.land or fulfilled.run-plan.<tracking-id> present for this tracking id
+  - if the plan is complete: step.run-plan.<tracking-id>.land and fulfilled.run-plan.<tracking-id>; remove any stale handoff.run-plan.<tracking-id>
 - The report must include a "## Phase" heading, a "Status:" line, tests run, verification result, landing result, remaining phases, and a scope assessment.
 - Mark completed progress tracker rows with exactly "✅ Done" so runner status parsing stays stable.
 - For direct mode, finalize source changes, plan tracker updates, and the report, then commit the scoped files directly on the current branch before exiting. Leave no dirty project artifacts except ignored .zskills tracking/log state.

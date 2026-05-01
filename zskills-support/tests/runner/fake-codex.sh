@@ -85,7 +85,7 @@ PY
   printf 'implemented\n' > "$tracking/step.run-plan.example.phase-1.implement"
   printf 'verified\n' > "$tracking/step.run-plan.example.phase-1.verify"
   printf 'reported\n' > "$tracking/step.run-plan.example.phase-1.report"
-  if [ "$complete_mode" = "complete" ]; then
+  if [ "$complete_mode" = "complete" ] || [ "$complete_mode" = "premature-final" ]; then
     printf 'landed\n' > "$tracking/step.run-plan.example.phase-1.land"
   fi
   if [ "$marker_mode" = "normal" ]; then
@@ -93,7 +93,9 @@ PY
     printf 'complete\n' > "$tracking/step.verify-changes.example.phase-1.complete"
     printf 'fulfilled\n' > "$tracking/fulfilled.verify-changes.example.phase-1"
   fi
-  printf 'fulfilled\n' > "$tracking/fulfilled.run-plan.example.phase-1"
+  if [ "$complete_mode" = "complete" ] || [ "$complete_mode" = "premature-final" ]; then
+    printf 'fulfilled\n' > "$tracking/fulfilled.run-plan.example.phase-1"
+  fi
   if [ "$with_handoff" = "yes" ]; then
     printf 'handoff\n' > "$tracking/handoff.run-plan.example.phase-1"
   fi
@@ -140,19 +142,72 @@ PY
     done
   } > "$REPO/reports/plan-example.md"
   local tracking="$REPO/.zskills/tracking/run-plan.example"
+  local remaining="no"
+  if grep -q '⬜ Not Started' "$REPO/plans/example.md"; then
+    remaining="yes"
+  fi
   printf 'implemented\n' > "$tracking/step.run-plan.example.phase-$phase.implement"
   printf 'verified\n' > "$tracking/step.run-plan.example.phase-$phase.verify"
   printf 'reported\n' > "$tracking/step.run-plan.example.phase-$phase.report"
-  printf 'landed\n' > "$tracking/step.run-plan.example.phase-$phase.land"
   printf 'required\n' > "$tracking/requires.verify-changes.example.phase-$phase"
   printf 'complete\n' > "$tracking/step.verify-changes.example.phase-$phase.complete"
   printf 'fulfilled\n' > "$tracking/fulfilled.verify-changes.example.phase-$phase"
-  printf 'fulfilled\n' > "$tracking/fulfilled.run-plan.example.phase-$phase"
-  if grep -q '⬜ Not Started' "$REPO/plans/example.md"; then
+  if [ "$remaining" = "yes" ]; then
     printf 'handoff\n' > "$tracking/handoff.run-plan.example.phase-$phase"
+  else
+    printf 'landed\n' > "$tracking/step.run-plan.example.phase-$phase.land"
+    printf 'fulfilled\n' > "$tracking/fulfilled.run-plan.example.phase-$phase"
   fi
   git -C "$REPO" add plans/example.md reports/plan-example.md
   git -C "$REPO" commit -q -m "fixture phase $phase progress"
+}
+
+write_reused_handoff_progress() {
+  [ -n "$REPO" ] || { echo "fake-codex: missing -C repo" >&2; exit 2; }
+  mkdir -p "$REPO/reports" "$REPO/.zskills/tracking/run-plan.example"
+  local tracking_id="example.phase-1"
+  local tracking="$REPO/.zskills/tracking/run-plan.example"
+  local phase
+  phase=$(python3 - "$REPO/plans/example.md" <<'PY'
+import re
+import sys
+path = sys.argv[1]
+text = open(path, encoding="utf-8").read()
+for match in re.finditer(r"^\| ([0-9]+)\. .*? \| ⬜ Not Started \|", text, flags=re.M):
+    print(match.group(1))
+    break
+else:
+    print("")
+PY
+)
+  [ -n "$phase" ] || { echo "fake-codex: reused handoff plan already complete" >&2; exit 0; }
+  python3 - "$REPO/plans/example.md" "$phase" <<'PY'
+import re
+import sys
+path, phase = sys.argv[1:3]
+text = open(path, encoding="utf-8").read()
+pattern = rf"^(\| {re.escape(phase)}\. .*? \| )⬜ Not Started( \|)"
+text = re.sub(pattern, rf"\1✅ Done\2", text, count=1, flags=re.M)
+open(path, "w", encoding="utf-8").write(text)
+PY
+  {
+    printf '# Example Plan Report\n\n'
+    printf '## Phase %s: Fixture Progress\n\n' "$phase"
+    printf 'Status: verified.\n\n'
+    printf 'Scope Assessment:\n\n'
+    printf -- '- Fixture-only reused handoff progress for runner validation.\n\n'
+    printf 'Verification:\n\n'
+    printf -- '- fake verifier passed.\n\n'
+  } > "$REPO/reports/plan-example.md"
+  printf 'implemented phase %s\n' "$phase" > "$tracking/step.run-plan.$tracking_id.implement"
+  printf 'verified phase %s\n' "$phase" > "$tracking/step.run-plan.$tracking_id.verify"
+  printf 'reported phase %s\n' "$phase" > "$tracking/step.run-plan.$tracking_id.report"
+  printf 'required phase %s\n' "$phase" > "$tracking/requires.verify-changes.$tracking_id"
+  printf 'complete phase %s\n' "$phase" > "$tracking/step.verify-changes.$tracking_id.complete"
+  printf 'fulfilled phase %s\n' "$phase" > "$tracking/fulfilled.verify-changes.$tracking_id"
+  printf 'handoff phase %s\n' "$phase" > "$tracking/handoff.run-plan.$tracking_id"
+  git -C "$REPO" add plans/example.md reports/plan-example.md
+  git -C "$REPO" commit -q -m "fixture reused handoff phase $phase progress"
 }
 
 case "$MODE" in
@@ -213,10 +268,22 @@ case "$MODE" in
     [ -z "$LAST_MESSAGE" ] || printf 'fake progress dirty\n' > "$LAST_MESSAGE"
     exit 0
     ;;
+  progress-premature-final)
+    write_progress yes normal normal clean premature-final
+    echo '{"event":"fake","message":"progress premature final"}'
+    [ -z "$LAST_MESSAGE" ] || printf 'fake progress premature final\n' > "$LAST_MESSAGE"
+    exit 0
+    ;;
   multi-progress)
     write_multi_progress
     echo '{"event":"fake","message":"multi progress"}'
     [ -z "$LAST_MESSAGE" ] || printf 'fake multi progress\n' > "$LAST_MESSAGE"
+    exit 0
+    ;;
+  reuse-handoff-progress)
+    write_reused_handoff_progress
+    echo '{"event":"fake","message":"reuse handoff progress"}'
+    [ -z "$LAST_MESSAGE" ] || printf 'fake reuse handoff progress\n' > "$LAST_MESSAGE"
     exit 0
     ;;
   no-progress)

@@ -103,9 +103,10 @@ Retain file-based tracking even though Codex does not run Claude hooks:
 
 1. Create `.zskills/tracking/<pipeline-id>/` for the plan run.
 2. Before verification, write `requires.verify-changes.<tracking-id>` with phase, diff base, and expected report path.
-3. During the phase, write canonical markers: `step.run-plan.<tracking-id>.implement`, `step.run-plan.<tracking-id>.verify`, `step.run-plan.<tracking-id>.report`, `step.run-plan.<tracking-id>.land`, and finally `fulfilled.run-plan.<tracking-id>`.
-4. For `finish`, write `handoff.run-plan.<tracking-id>` after each phase so the next top-level turn can resume without relying on conversation memory.
-5. Before landing, check the `implement`, `verify`, and `report` markers plus the persistent verification report. Treat missing or inconsistent markers as a stop condition unless the user explicitly chooses manual recovery.
+3. During the phase, write canonical markers: `step.run-plan.<tracking-id>.implement`, `step.run-plan.<tracking-id>.verify`, and `step.run-plan.<tracking-id>.report`.
+4. For `finish`, if another phase remains, write `handoff.run-plan.<tracking-id>` after the phase so the next top-level turn can resume without relying on conversation memory. Do not leave `step.run-plan.<tracking-id>.land` or `fulfilled.run-plan.<tracking-id>` present for a non-final chunk.
+5. Only when the plan is complete, write `step.run-plan.<tracking-id>.land` and finally `fulfilled.run-plan.<tracking-id>`, and remove any stale `handoff.run-plan.<tracking-id>`.
+6. Before landing, check the `implement`, `verify`, and `report` markers plus the persistent verification report. Treat missing or inconsistent markers as a stop condition unless the user explicitly chooses manual recovery.
 
 Tracking files are ephemeral gates. Do not include `.zskills/`, `.zskills-tracked`, or other tracking marker files in landed commits or PRs unless the user explicitly asks to version them.
 

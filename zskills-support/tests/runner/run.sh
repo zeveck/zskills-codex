@@ -409,9 +409,31 @@ data = json.load(open(sys.argv[1]))
 assert data["exit_code"] == 0
 assert data["validation_result"] == "failed"
 assert data["validation_reason"] == "handoff marker missing after progress"
-assert data["validated_tracking_id"] == "example.phase-1"
+assert data["validated_tracking_id"] is None
 PY
   rm -f /tmp/zskills-runner-missing-handoff.out
+}
+
+test_premature_final_marker_blocks() {
+  local repo run_dir summary
+  repo=$(make_repo)
+  if CODEX_BIN="$FAKE_CODEX" FAKE_CODEX_MODE=progress-premature-final "$SCRIPT" run-plan plans/example.md finish auto --repo "$repo" >/tmp/zskills-runner-premature-final.out 2>&1; then
+    echo "expected premature final marker validation failure" >&2
+    exit 1
+  fi
+  grep -q 'validation_failed=final run-plan marker present before plan completion' /tmp/zskills-runner-premature-final.out
+  run_dir=$(latest_run_dir "$repo")
+  summary="$run_dir/chunk-001.summary.json"
+  python3 -m json.tool "$summary" >/dev/null
+  python3 - "$summary" <<'PY'
+import json, sys
+data = json.load(open(sys.argv[1]))
+assert data["exit_code"] == 0
+assert data["validation_result"] == "failed"
+assert data["validation_reason"] == "final run-plan marker present before plan completion"
+assert data["validated_tracking_id"] == "example.phase-1"
+PY
+  rm -f /tmp/zskills-runner-premature-final.out
 }
 
 test_missing_report_blocks() {
@@ -583,6 +605,58 @@ PY
   rm -f /tmp/zskills-runner-multi.out
 }
 
+test_reused_handoff_validates() {
+  local repo run_dir summary
+  repo=$(make_multi_repo)
+  python3 - "$repo/plans/example.md" <<'PY'
+import re
+import sys
+path = sys.argv[1]
+text = open(path, encoding="utf-8").read()
+text = re.sub(r"⬜ Not Started", "✅ Done", text, count=1)
+open(path, "w", encoding="utf-8").write(text)
+PY
+  mkdir -p "$repo/reports" "$repo/.zskills/tracking/run-plan.example"
+  cat > "$repo/reports/plan-example.md" <<'MD'
+# Example Plan Report
+
+## Phase 1: Fixture Progress
+
+Status: verified.
+
+Scope Assessment:
+
+- Fixture-only initial progress for runner validation.
+
+Verification:
+
+- fake verifier passed.
+MD
+  printf 'handoff phase 1\n' > "$repo/.zskills/tracking/run-plan.example/handoff.run-plan.example.phase-1"
+  git -C "$repo" add plans/example.md reports/plan-example.md
+  git -C "$repo" commit -q -m "fixture phase 1 complete"
+
+  if CODEX_BIN="$FAKE_CODEX" FAKE_CODEX_MODE=reuse-handoff-progress "$SCRIPT" run-plan plans/example.md finish auto --repo "$repo" --max-chunks 1 >/tmp/zskills-runner-reuse-handoff.out 2>&1; then
+    echo "expected max-chunks stop after one validated reused-handoff chunk" >&2
+    exit 1
+  fi
+  grep -q 'runner_stop_reason=max-chunks' /tmp/zskills-runner-reuse-handoff.out
+  ! grep -q 'validation_failed=handoff marker missing after progress' /tmp/zskills-runner-reuse-handoff.out
+  run_dir=$(latest_run_dir "$repo")
+  summary="$run_dir/chunk-001.summary.json"
+  python3 -m json.tool "$summary" >/dev/null
+  python3 - "$summary" <<'PY'
+import json
+import sys
+data = json.load(open(sys.argv[1]))
+assert data["validation_result"] == "passed"
+assert data["validated_tracking_id"] == "example.phase-1"
+assert "changed_handoff_run_plan" in data["progress_signals"]
+assert data["runner_stop_reason"] == "max-chunks"
+PY
+  rm -f /tmp/zskills-runner-reuse-handoff.out
+}
+
 test_max_chunks_stops() {
   local repo run_dir summary
   repo=$(make_multi_repo)
@@ -673,12 +747,14 @@ case "$CASE" in
   fake-timeout) test_fake_timeout ;;
   fake-idle-timeout) test_fake_idle_timeout ;;
   multi-chunk) test_multi_chunk_completes ;;
+  reused-handoff) test_reused_handoff_validates ;;
   max-chunks) test_max_chunks_stops ;;
   cherry-pick-canary) test_cherry_pick_canary ;;
   pr-dry-run) test_pr_dry_run ;;
   progress-detected) test_progress_detected ;;
   no-progress-blocks) test_no_progress_blocks ;;
   missing-handoff-blocks) test_missing_handoff_blocks ;;
+  premature-final-blocks) test_premature_final_marker_blocks ;;
   missing-report-blocks) test_missing_report_blocks ;;
   missing-scope-blocks) test_missing_scope_blocks ;;
   missing-verifier-blocks) test_missing_verifier_blocks ;;
@@ -698,11 +774,13 @@ case "$CASE" in
     test_fake_fail
     test_no_progress_blocks
     test_missing_handoff_blocks
+    test_premature_final_marker_blocks
     test_missing_report_blocks
     test_missing_scope_blocks
     test_missing_verifier_blocks
     test_dirty_artifact_blocks
     test_multi_chunk_completes
+    test_reused_handoff_validates
     test_max_chunks_stops
     test_cherry_pick_canary
     test_pr_dry_run
