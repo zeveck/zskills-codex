@@ -8,7 +8,9 @@ Codex runtime policy:
 - Do not install or rely on `.claude/settings.json` for Codex.
 - Do not use Claude cron tools.
 - Treat Claude hooks as reference safety logic, not active enforcement.
-- Prefer project `.codex/zskills-config.json` for Codex-specific configuration.
+- Project `.codex/zskills-config.json` is the normal Codex runtime config and
+  should be created by new installs. Legacy fallbacks exist only for older
+  repos and compatibility checks.
 - Use explicit git worktrees. Implementation delegation needs explicit user authorization; workflow-required verifier/reviewer sub-agents are allowed when available and must be disclosed when replaced by inline review.
 - Use `/home/vscode/.codex/zskills-support/config/zskills-config.schema.json` as the shared config schema. Active workflows should honor `testing.*`, `dev_server.*`, `ui.file_patterns`, and `ci.*` in addition to `execution.*`; `agents.min_model` is advisory only.
 

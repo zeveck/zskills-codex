@@ -14,6 +14,7 @@ fi
 LAST_MESSAGE=""
 REPO=""
 MODE="${FAKE_CODEX_MODE:-success}"
+PROMPT=""
 while [ $# -gt 0 ]; do
   case "$1" in
     -C)
@@ -24,9 +25,42 @@ while [ $# -gt 0 ]; do
       LAST_MESSAGE="$2"
       shift 2
       ;;
-    *) shift ;;
+    *)
+      PROMPT="$1"
+      shift
+      ;;
   esac
 done
+
+contract_value() {
+  local label="$1" fallback="$2"
+  local value
+  value=$(printf '%s\n' "$PROMPT" | sed -n "s/^- $label: //p" | head -1)
+  if [ -n "$value" ]; then
+    printf '%s\n' "$value"
+  else
+    printf '%s\n' "$fallback"
+  fi
+}
+
+contract_report_path() {
+  contract_value "Report path" "$REPO/reports/plan-example.md"
+}
+
+contract_tracking_dir() {
+  contract_value "Canonical tracking directory" "$REPO/.zskills/tracking/run-plan.example"
+}
+
+contract_pipeline_id() {
+  contract_value "Pipeline id" "run-plan.example"
+}
+
+marker_id() {
+  local suffix="$1"
+  local pipeline
+  pipeline=$(contract_pipeline_id)
+  printf '%s\n' "${pipeline#run-plan.}.$suffix"
+}
 
 write_progress() {
   local with_handoff="$1"
@@ -35,9 +69,13 @@ write_progress() {
   local dirty_mode="${4:-clean}"
   local complete_mode="${5:-incomplete}"
   [ -n "$REPO" ] || { echo "fake-codex: missing -C repo" >&2; exit 2; }
-  mkdir -p "$REPO/reports" "$REPO/.zskills/tracking/run-plan.example"
+  local report tracking tracking_id
+  report=$(contract_report_path)
+  tracking=$(contract_tracking_dir)
+  tracking_id=$(marker_id "phase-1")
+  mkdir -p "$(dirname "$report")" "$tracking"
   if [ "$report_mode" = "normal" ]; then
-    cat > "$REPO/reports/plan-example.md" <<'MD'
+    cat > "$report" <<'MD'
 # Example Plan Report
 
 ## Phase 1: Fixture Progress
@@ -52,10 +90,10 @@ Verification:
 
 - fake verifier passed.
 MD
-    git -C "$REPO" add reports/plan-example.md
+    git -C "$REPO" add "$report"
     git -C "$REPO" commit -q -m "fixture progress"
   elif [ "$report_mode" = "no-scope" ]; then
-    cat > "$REPO/reports/plan-example.md" <<'MD'
+    cat > "$report" <<'MD'
 # Example Plan Report
 
 ## Phase 1: Fixture Progress
@@ -66,10 +104,9 @@ Verification:
 
 - fake verifier passed.
 MD
-    git -C "$REPO" add reports/plan-example.md
+    git -C "$REPO" add "$report"
     git -C "$REPO" commit -q -m "fixture progress"
   fi
-  local tracking="$REPO/.zskills/tracking/run-plan.example"
   if [ "$complete_mode" = "complete" ]; then
     python3 - "$REPO/plans/example.md" <<'PY'
 import re
@@ -82,22 +119,22 @@ PY
     git -C "$REPO" add plans/example.md
     git -C "$REPO" commit -q -m "fixture plan complete"
   fi
-  printf 'implemented\n' > "$tracking/step.run-plan.example.phase-1.implement"
-  printf 'verified\n' > "$tracking/step.run-plan.example.phase-1.verify"
-  printf 'reported\n' > "$tracking/step.run-plan.example.phase-1.report"
+  printf 'implemented\n' > "$tracking/step.run-plan.$tracking_id.implement"
+  printf 'verified\n' > "$tracking/step.run-plan.$tracking_id.verify"
+  printf 'reported\n' > "$tracking/step.run-plan.$tracking_id.report"
   if [ "$complete_mode" = "complete" ] || [ "$complete_mode" = "premature-final" ]; then
-    printf 'landed\n' > "$tracking/step.run-plan.example.phase-1.land"
+    printf 'landed\n' > "$tracking/step.run-plan.$tracking_id.land"
   fi
   if [ "$marker_mode" = "normal" ]; then
-    printf 'required\n' > "$tracking/requires.verify-changes.example.phase-1"
-    printf 'complete\n' > "$tracking/step.verify-changes.example.phase-1.complete"
-    printf 'fulfilled\n' > "$tracking/fulfilled.verify-changes.example.phase-1"
+    printf 'required\n' > "$tracking/requires.verify-changes.$tracking_id"
+    printf 'complete\n' > "$tracking/step.verify-changes.$tracking_id.complete"
+    printf 'fulfilled\n' > "$tracking/fulfilled.verify-changes.$tracking_id"
   fi
   if [ "$complete_mode" = "complete" ] || [ "$complete_mode" = "premature-final" ]; then
-    printf 'fulfilled\n' > "$tracking/fulfilled.run-plan.example.phase-1"
+    printf 'fulfilled\n' > "$tracking/fulfilled.run-plan.$tracking_id"
   fi
   if [ "$with_handoff" = "yes" ]; then
-    printf 'handoff\n' > "$tracking/handoff.run-plan.example.phase-1"
+    printf 'handoff\n' > "$tracking/handoff.run-plan.$tracking_id"
   fi
   if [ "$dirty_mode" = "dirty" ]; then
     printf 'dirty\n' > "$REPO/dirty-artifact.txt"
@@ -106,7 +143,11 @@ PY
 
 write_multi_progress() {
   [ -n "$REPO" ] || { echo "fake-codex: missing -C repo" >&2; exit 2; }
-  mkdir -p "$REPO/reports" "$REPO/.zskills/tracking/run-plan.example"
+  local report tracking pipeline_slug
+  report=$(contract_report_path)
+  tracking=$(contract_tracking_dir)
+  pipeline_slug=${tracking##*.}
+  mkdir -p "$(dirname "$report")" "$tracking"
   local phase
   phase=$(python3 - "$REPO/plans/example.md" <<'PY'
 import re
@@ -140,33 +181,36 @@ PY
       printf 'Verification:\n\n'
       printf -- '- fake verifier passed.\n\n'
     done
-  } > "$REPO/reports/plan-example.md"
-  local tracking="$REPO/.zskills/tracking/run-plan.example"
+  } > "$report"
   local remaining="no"
   if grep -q '⬜ Not Started' "$REPO/plans/example.md"; then
     remaining="yes"
   fi
-  printf 'implemented\n' > "$tracking/step.run-plan.example.phase-$phase.implement"
-  printf 'verified\n' > "$tracking/step.run-plan.example.phase-$phase.verify"
-  printf 'reported\n' > "$tracking/step.run-plan.example.phase-$phase.report"
-  printf 'required\n' > "$tracking/requires.verify-changes.example.phase-$phase"
-  printf 'complete\n' > "$tracking/step.verify-changes.example.phase-$phase.complete"
-  printf 'fulfilled\n' > "$tracking/fulfilled.verify-changes.example.phase-$phase"
+  local tracking_id
+  tracking_id=$(marker_id "phase-$phase")
+  printf 'implemented\n' > "$tracking/step.run-plan.$tracking_id.implement"
+  printf 'verified\n' > "$tracking/step.run-plan.$tracking_id.verify"
+  printf 'reported\n' > "$tracking/step.run-plan.$tracking_id.report"
+  printf 'required\n' > "$tracking/requires.verify-changes.$tracking_id"
+  printf 'complete\n' > "$tracking/step.verify-changes.$tracking_id.complete"
+  printf 'fulfilled\n' > "$tracking/fulfilled.verify-changes.$tracking_id"
   if [ "$remaining" = "yes" ]; then
-    printf 'handoff\n' > "$tracking/handoff.run-plan.example.phase-$phase"
+    printf 'handoff\n' > "$tracking/handoff.run-plan.$tracking_id"
   else
-    printf 'landed\n' > "$tracking/step.run-plan.example.phase-$phase.land"
-    printf 'fulfilled\n' > "$tracking/fulfilled.run-plan.example.phase-$phase"
+    printf 'landed\n' > "$tracking/step.run-plan.$tracking_id.land"
+    printf 'fulfilled\n' > "$tracking/fulfilled.run-plan.$tracking_id"
   fi
-  git -C "$REPO" add plans/example.md reports/plan-example.md
+  git -C "$REPO" add plans/example.md "$report"
   git -C "$REPO" commit -q -m "fixture phase $phase progress"
 }
 
 write_reused_handoff_progress() {
   [ -n "$REPO" ] || { echo "fake-codex: missing -C repo" >&2; exit 2; }
-  mkdir -p "$REPO/reports" "$REPO/.zskills/tracking/run-plan.example"
-  local tracking_id="example.phase-1"
-  local tracking="$REPO/.zskills/tracking/run-plan.example"
+  local report tracking tracking_id
+  report=$(contract_report_path)
+  tracking=$(contract_tracking_dir)
+  tracking_id=$(marker_id "phase-1")
+  mkdir -p "$(dirname "$report")" "$tracking"
   local phase
   phase=$(python3 - "$REPO/plans/example.md" <<'PY'
 import re
@@ -198,7 +242,7 @@ PY
     printf -- '- Fixture-only reused handoff progress for runner validation.\n\n'
     printf 'Verification:\n\n'
     printf -- '- fake verifier passed.\n\n'
-  } > "$REPO/reports/plan-example.md"
+  } > "$report"
   printf 'implemented phase %s\n' "$phase" > "$tracking/step.run-plan.$tracking_id.implement"
   printf 'verified phase %s\n' "$phase" > "$tracking/step.run-plan.$tracking_id.verify"
   printf 'reported phase %s\n' "$phase" > "$tracking/step.run-plan.$tracking_id.report"
@@ -206,7 +250,7 @@ PY
   printf 'complete phase %s\n' "$phase" > "$tracking/step.verify-changes.$tracking_id.complete"
   printf 'fulfilled phase %s\n' "$phase" > "$tracking/fulfilled.verify-changes.$tracking_id"
   printf 'handoff phase %s\n' "$phase" > "$tracking/handoff.run-plan.$tracking_id"
-  git -C "$REPO" add plans/example.md reports/plan-example.md
+  git -C "$REPO" add plans/example.md "$report"
   git -C "$REPO" commit -q -m "fixture reused handoff phase $phase progress"
 }
 

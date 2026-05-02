@@ -6,18 +6,31 @@ CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
 
 usage() {
   cat <<'EOF'
-Usage: scripts/install.sh [--codex-home <path>]
+Usage: scripts/install.sh [--codex-home <path>] [--project <path>] [--no-project-config]
 
 Installs this Codex Z Skills distribution into CODEX_HOME.
 It does not write skills or support assets into the current project repo.
+By default it also initializes .codex/zskills-config.json in the current
+project if that file does not already exist.
 EOF
 }
+
+PROJECT_PATH="${ZSKILLS_PROJECT_PATH:-}"
+WRITE_PROJECT_CONFIG=1
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --codex-home)
       CODEX_HOME="$2"
       shift 2
+      ;;
+    --project)
+      PROJECT_PATH="$2"
+      shift 2
+      ;;
+    --no-project-config)
+      WRITE_PROJECT_CONFIG=0
+      shift
       ;;
     -h|--help)
       usage
@@ -77,6 +90,56 @@ for root in roots:
         if updated != data:
             path.write_text(updated, encoding="utf-8")
 PY
+
+resolve_project_root() {
+  local candidate="$1"
+  if [ -n "$candidate" ]; then
+    (cd "$candidate" && pwd)
+    return
+  fi
+  if git rev-parse --show-toplevel >/dev/null 2>&1; then
+    git rev-parse --show-toplevel
+  else
+    pwd
+  fi
+}
+
+write_project_config() {
+  local project_root config_file
+  project_root=$(resolve_project_root "$PROJECT_PATH")
+  config_file="$project_root/.codex/zskills-config.json"
+  mkdir -p "$project_root/.codex"
+  if [ -e "$config_file" ]; then
+    echo "Project config already exists: $config_file"
+    return
+  fi
+  cat > "$config_file" <<'JSON'
+{
+  "execution": {
+    "landing": "cherry-pick",
+    "base_branch": "main",
+    "remote": "origin",
+    "main_protected": false,
+    "branch_prefix": "zskills/"
+  },
+  "runner": {
+    "max_chunks": 10,
+    "chunk_timeout_minutes": 90,
+    "idle_timeout_minutes": 15,
+    "log_dir": ".zskills/logs",
+    "stop_marker": ".zskills/stop",
+    "sandbox": "workspace-write",
+    "approval_policy": "never",
+    "allow_direct_unattended": false
+  }
+}
+JSON
+  echo "Initialized project config: $config_file"
+}
+
+if [ "$WRITE_PROJECT_CONFIG" = "1" ]; then
+  write_project_config
+fi
 
 echo "Installed Z Skills for Codex into $CODEX_HOME"
 echo "Installed Z Skills: $(find "$ROOT/skills" -mindepth 2 -maxdepth 2 -name SKILL.md | wc -l | tr -d ' ')"

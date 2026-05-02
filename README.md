@@ -49,6 +49,11 @@ Or choose an explicit target:
 bash scripts/install.sh --codex-home "$HOME/.codex"
 ```
 
+By default the installer also initializes project runtime config at
+`.codex/zskills-config.json` in the current git repo. It does not overwrite an
+existing config. Use `--project <path>` to initialize a different repo, or
+`--no-project-config` when installing only the Codex-home skill package.
+
 The installer copies files into:
 
 ```text
@@ -63,7 +68,7 @@ Project repos may still contain normal runtime artifacts created by workflows,
 such as:
 
 - `reports/plan-*.md`
-- optional `.codex/zskills-config.json`
+- `.codex/zskills-config.json`
 - ignored `.zskills/` tracking and log state
 
 During install, bundled references to the original development Codex home are

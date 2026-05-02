@@ -142,13 +142,34 @@ PY
 install_preserves_unrelated() {
   local tmp total
   tmp=$(mktemp -d)
-  mkdir -p "$tmp/codex-home/skills/existing" "$tmp/codex-home/skills/run-plan"
+  mkdir -p "$tmp/codex-home/skills/existing" "$tmp/codex-home/skills/run-plan" "$tmp/project"
+  git -C "$tmp/project" init -q
   printf '%s\n' '---' 'name: existing' 'description: keep me' '---' > "$tmp/codex-home/skills/existing/SKILL.md"
   printf old > "$tmp/codex-home/skills/run-plan/OLD"
-  bash "$ROOT/scripts/install.sh" --codex-home "$tmp/codex-home"
+  bash "$ROOT/scripts/install.sh" --codex-home "$tmp/codex-home" --project "$tmp/project"
   [ -f "$tmp/codex-home/skills/existing/SKILL.md" ] || fail "unrelated skill was removed"
   [ ! -e "$tmp/codex-home/skills/run-plan/OLD" ] || fail "owned stale skill file survived"
   [ -f "$tmp/codex-home/skills/run-plan/SKILL.md" ] || fail "run-plan was not installed"
+  [ -f "$tmp/project/.codex/zskills-config.json" ] || fail "project config was not initialized"
+  python3 - "$tmp/project/.codex/zskills-config.json" <<'PY'
+import json, sys
+data = json.load(open(sys.argv[1]))
+assert data["execution"]["landing"] == "cherry-pick"
+assert data["runner"]["allow_direct_unattended"] is False
+PY
+  python3 - "$tmp/project/.codex/zskills-config.json" <<'PY'
+import json, sys
+p = sys.argv[1]
+data = json.load(open(p))
+data["execution"]["landing"] = "pr"
+json.dump(data, open(p, "w"))
+PY
+  bash "$ROOT/scripts/install.sh" --codex-home "$tmp/codex-home" --project "$tmp/project"
+  python3 - "$tmp/project/.codex/zskills-config.json" <<'PY'
+import json, sys
+data = json.load(open(sys.argv[1]))
+assert data["execution"]["landing"] == "pr"
+PY
   ! rg -n '/home/vscode/.codex' "$tmp/codex-home/skills" "$tmp/codex-home/zskills-support"
   total=$(find "$tmp/codex-home/skills" -mindepth 2 -maxdepth 2 -name SKILL.md | wc -l | tr -d ' ')
   echo "total_skill_dirs_after_install=$total"
@@ -167,7 +188,7 @@ script_checks() {
 }
 
 setup_temp_codex_home() {
-  bash "$ROOT/scripts/install.sh" --codex-home "$CODEX_HOME_CANARY" >/dev/null
+  bash "$ROOT/scripts/install.sh" --codex-home "$CODEX_HOME_CANARY" --no-project-config >/dev/null
   echo "$CODEX_HOME_CANARY"
 }
 

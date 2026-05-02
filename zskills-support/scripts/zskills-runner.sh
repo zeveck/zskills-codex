@@ -489,6 +489,23 @@ plan_slug() {
   sanitize_id "$base"
 }
 
+plan_key() {
+  local plan="$1"
+  local slug rel digest
+  slug=$(plan_slug "$plan")
+  rel=$(python3 - "$REPO_ROOT" "$plan" <<'PY'
+import os
+import sys
+
+repo, plan = sys.argv[1:3]
+path = plan if os.path.isabs(plan) else os.path.join(repo, plan)
+print(os.path.relpath(os.path.normpath(path), os.path.normpath(repo)))
+PY
+)
+  digest=$(printf '%s' "$rel" | sha256sum | awk '{print substr($1, 1, 10)}')
+  printf '%s-%s\n' "$slug" "$digest"
+}
+
 git_repo_root() {
   local repo="$1"
   git -C "$repo" rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 1
@@ -518,6 +535,7 @@ repo=$REPO_ROOT
 plan=$PLAN
 plan_path=$plan_path
 plan_slug=$PLAN_SLUG
+plan_key=$PLAN_KEY
 pipeline_id=$PIPELINE_ID
 tracking_dir=$tracking
 report_path=$report
@@ -542,13 +560,14 @@ EOF
 }
 
 write_initial_state() {
-  local state_dir plan_path report tracking state_file tmp
+  local state_dir plan_path report tracking state_file tmp repo_key
   state_dir="${ZSKILLS_RUNNER_STATE_DIR:-/tmp/zskills-runner-state}"
   plan_path=$(resolve_plan_path "$REPO_ROOT" "$PLAN")
   report=$(report_path "$REPO_ROOT" "$PLAN_SLUG")
   tracking=$(tracking_dir "$REPO_ROOT" "$PIPELINE_ID")
+  repo_key=$(printf '%s' "$REPO_ROOT" | sha256sum | awk '{print substr($1, 1, 12)}')
   mkdir -p "$state_dir"
-  state_file="$state_dir/$PLAN_SLUG.initial.json"
+  state_file="$state_dir/$PLAN_KEY.$repo_key.initial.json"
   tmp=$(mktemp)
   print_resolved > "$tmp"
   {
@@ -604,7 +623,7 @@ tree_is_clean() {
   while IFS= read -r line; do
     path=${line#???}
     case "$path" in
-      .zskills/runner/"$PLAN_SLUG.lock"|.zskills/runner/"$PLAN_SLUG.lock"/*) ;;
+      .zskills/runner/"$PLAN_KEY.lock"|.zskills/runner/"$PLAN_KEY.lock"/*) ;;
       *) return 1 ;;
     esac
   done <<EOF
@@ -627,7 +646,7 @@ refuse_git_residue() {
 }
 
 acquire_lock() {
-  LOCK_DIR="$REPO_ROOT/.zskills/runner/$PLAN_SLUG.lock"
+  LOCK_DIR="$REPO_ROOT/.zskills/runner/$PLAN_KEY.lock"
   if mkdir -p "$REPO_ROOT/.zskills/runner" && mkdir "$LOCK_DIR" 2>/dev/null; then
     printf 'pid=%s\nstarted_at=%s\nplan=%s\n' "$$" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$PLAN" > "$LOCK_DIR/owner"
     trap 'rm -rf "$LOCK_DIR"' EXIT
@@ -802,6 +821,9 @@ External ZSkills runner contract for this chunk:
 - Plan path: $plan_path
 - Report path: $report
 - Pipeline id: $PIPELINE_ID
+- Resolved landing mode: $EXECUTION_LANDING. You must use this mode for this chunk.
+- Execution base branch: $BASE_BRANCH
+- Execution remote: $REMOTE
 - Canonical tracking directory: $tracking
 - Tracking id: if $tracking contains a handoff.run-plan.* marker, reuse the newest marker suffix; otherwise use $chunk_tracking_id.
 - Write canonical marker files directly in the canonical tracking directory, with no timestamp or phase subdirectories, even if implementation happens in a git worktree:
@@ -816,9 +838,9 @@ External ZSkills runner contract for this chunk:
   - if the plan is complete: step.run-plan.<tracking-id>.land and fulfilled.run-plan.<tracking-id>; remove any stale handoff.run-plan.<tracking-id>
 - The report must include a "## Phase" heading, a "Status:" line, tests run, verification result, landing result, remaining phases, and a scope assessment.
 - Mark completed progress tracker rows with exactly "✅ Done" so runner status parsing stays stable.
-- For direct mode, finalize source changes, plan tracker updates, and the report, then commit the scoped files directly on the current branch before exiting. Leave no dirty project artifacts except ignored .zskills tracking/log state.
-- For cherry-pick worktrees, finalize source changes, plan tracker updates, and the report before committing the worktree change. Cherry-pick that scoped commit to the base branch; do not create follow-up base-branch commits except for an explicit conflict/recovery case.
-- For PR worktrees, finalize source changes, plan tracker updates, and the report before pushing/creating the PR. Do not push directly to the base branch.
+- If resolved landing mode is direct, finalize source changes, plan tracker updates, and the report, then commit the scoped files directly on the current branch before exiting. Leave no dirty project artifacts except ignored .zskills tracking/log state.
+- If resolved landing mode is cherry-pick, create/use a manual git worktree, finalize source changes, plan tracker updates, and the report there, commit the worktree change, then cherry-pick that scoped commit to $BASE_BRANCH in the main repo. Do not commit phase source changes directly in the main repo for cherry-pick mode.
+- If resolved landing mode is pr, finalize source changes, plan tracker updates, and the report in a feature worktree/branch before pushing/creating the PR. Do not push directly to the base branch.
 - After landing or PR preparation, ensure the main repository has the plan/report updates and canonical markers before exiting.
 - Do not commit .zskills tracking files.
 EOF
@@ -861,7 +883,7 @@ PY
 run_chunks() {
   local log_root run_dir chunk chunk_status
   log_root=$(abs_runner_path "$LOG_DIR")
-  run_dir="$log_root/run-plan-$PLAN_SLUG-$(date -u +%Y%m%dT%H%M%SZ)"
+  run_dir="$log_root/run-plan-$PLAN_KEY-$(date -u +%Y%m%dT%H%M%SZ)"
   mkdir -p "$run_dir"
   chunk=1
   while [ "$chunk" -le "$MAX_CHUNKS" ]; do
@@ -967,7 +989,8 @@ if ! REPO_ROOT=$(git_repo_root "$REPO"); then
 fi
 CONFIG_FILE=$(find_config "$REPO_ROOT")
 PLAN_SLUG=$(plan_slug "$PLAN")
-PIPELINE_ID="run-plan.$PLAN_SLUG"
+PLAN_KEY=$(plan_key "$PLAN")
+PIPELINE_ID="run-plan.$PLAN_KEY"
 
 [ -n "$MAX_CHUNKS" ] || MAX_CHUNKS=$(json_get "$CONFIG_FILE" "runner.max_chunks" "10")
 [ -n "$CHUNK_TIMEOUT_MINUTES" ] || CHUNK_TIMEOUT_MINUTES=$(json_get "$CONFIG_FILE" "runner.chunk_timeout_minutes" "90")
