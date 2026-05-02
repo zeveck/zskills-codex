@@ -19,8 +19,8 @@ Observed: `zskills-dev` is the development source for `zskills`, not the end-use
 | Hooks | `hooks/`, README install behavior | Keep Claude hooks in Claude output; convert only if a compatibility adapter exists. | Reject direct hook assumptions; use Codex runner/gate tracking instead. | Adapt or reject. |
 | Runner behavior | `scripts/`, plans, runner contracts | Maintain generated dual-client runner text and client-specific execution paths. | Adapt to Codex-native `zskills-runner.sh`, top-level `codex exec`, and tracking markers. | Adapt. |
 | Tracking markers | Plans, reports, `.zskills` conventions | Keep marker names stable across generated outputs while avoiding client leakage. | Preserve canonical `.zskills/tracking` contract for runner parsing. | Import directly for shared state names; adapt mechanics. |
-| Installer behavior | README, install/update scripts | Generate separate Claude and Codex install instructions. | Adapt to `bash scripts/install.sh`, `$CODEX_HOME/skills/`, `$CODEX_HOME/zskills-support/`, and `.codex`. | Adapt. |
-| Config schema | `config/`, `.claude/zskills-config.json`, release config | Map schema fields into compatibility outputs and document client-only fields. | Adapt to `.codex/zskills-config.json` and `zskills-support/config/zskills-config.schema.json`. | Adapt. |
+| Installer behavior | README, install/update scripts | Generate separate Claude and Codex install instructions. | Adapt to `bash scripts/install.sh`, project `.agents/skills/`, project `.agents/zskills-support/`, and `.agents/zskills-config.json`. | Adapt. |
+| Config schema | `config/`, `.claude/zskills-config.json`, release config | Map schema fields into compatibility outputs and document client-only fields. | Adapt to `.agents/zskills-config.json` and `zskills-support/config/zskills-config.schema.json`. | Adapt. |
 | Tests | `tests/`, `.github/workflows/test.yml`, canary scripts | Add or update generation, drift, and fidelity tests. | Add or update shell canaries and report-quality checks. | Import concepts; adapt commands. |
 | Reports | `reports/` and plan reports | Keep report format compatible with both clients and generated output checks. | Keep report headings and status lines stable for Codex runner parsing. | Import structure when neutral. |
 | Release workflow | `RELEASING.md`, `ship-to-prod.yml`, tags | Defer unless the compatibility repository adopts the same release train. | Defer until the publication target is populated and release mechanics exist. | Defer. |
@@ -48,13 +48,13 @@ The key rule for `zskills-cc` is to adapt behind a client boundary whenever beha
 
 ## Application Strategy for zskills-codex
 
-Inferred: this `zskills-codex` implementation should optimize for native Codex behavior rather than preserving Claude compatibility. Changes from `zskills-dev` should be reviewed for useful workflow intent, then rewritten to match Codex tools, `$CODEX_HOME`, `.codex/zskills-config.json`, `.zskills/tracking`, and the local support scripts.
+Inferred: this `zskills-codex` implementation should optimize for native Codex behavior rather than preserving Claude compatibility. Changes from `zskills-dev` should be reviewed for useful workflow intent, then rewritten to match Codex tools, project `.agents`, `.agents/zskills-config.json`, `.zskills/tracking`, and the local support scripts.
 
 | zskills-dev change type | zskills-codex action | Rationale |
 | --- | --- | --- |
 | Client-neutral skill reasoning or acceptance criteria | import directly | Workflow quality can transfer without runtime changes. |
 | Report heading and runner parsing conventions | import directly | Stable reports improve unattended chunking and canary checks. |
-| Claude hook installation, hook registration, or `.claude` paths | adapt to Codex-native behavior | Codex does not run Claude hooks and uses `.codex` project config. |
+| Claude hook installation, hook registration, or `.claude` paths | adapt to Codex-native behavior | Codex does not run Claude hooks and uses `.agents` project config. |
 | Slash-command-only instructions | adapt to Codex-native behavior | Codex skills are invoked by natural language and local instructions, not Claude slash commands. |
 | Agent/delegation instructions tied to Claude tools | adapt to Codex-native behavior | Codex uses sub-agents only under its own tool and policy constraints. |
 | Unsupported frontmatter or metadata | reject | Invalid skill metadata can make installation or loading unreliable. |
@@ -71,7 +71,7 @@ The key rule for `zskills-codex` is to adapt to Codex-native behavior whenever `
 | --- | --- | --- | --- |
 | import directly | The change is client-neutral, generation-safe, and valid in both `.claude/skills` and `.codex/skills`. | The change is Codex-valid as written and does not depend on Claude hooks, `.claude`, or slash-command mechanics. | Source diff, generated-output check for `zskills-cc`, local canary or focused review for `zskills-codex`. |
 | adapt behind a client boundary | The behavior is useful but must differ between Claude and Codex outputs. | Not usually applicable as a product strategy, except when documenting external compatibility differences. | Explicit mapping of source behavior to each generated client output. |
-| adapt to Codex-native behavior | The Codex generated output needs rewritten runner, tracking, installer, or config language. | The workflow intent is good but must use Codex tools, support scripts, `.codex` config, and local reports. | Local path references and passing Codex verification commands. |
+| adapt to Codex-native behavior | The Codex generated output needs rewritten runner, tracking, installer, or config language. | The workflow intent is good but must use Codex tools, support scripts, `.agents` config, and local reports. | Local path references and passing Codex verification commands. |
 | reject | The change is invalid for one client and no boundary or adapter can preserve correctness. | The change depends on unavailable Claude-only automation or unsupported frontmatter. | Rejection note with source URL or local path and the broken assumption. |
 | defer | The change is experimental, release-only, or based on stale GitHub evidence. | The change depends on publication, release timing, or unverified generated output drift. | Follow-up issue, plan, or report entry with refresh criteria. |
 
@@ -107,7 +107,7 @@ For this Phase 4 canary chunk, the required focused verification command is:
 bash scripts/test-zskills-online-variant-report-canary.sh
 ```
 
-Observed local constraint: this checkout has no configured `origin` remote even though `.codex/zskills-config.json` names `origin`. Remote freshness checks should either configure the intended remote before release work or record the access gap in reports.
+Observed local constraint: this checkout has no configured `origin` remote even though `.agents/zskills-config.json` names `origin`. Remote freshness checks should either configure the intended remote before release work or record the access gap in reports.
 
 ## Release Recommendations
 

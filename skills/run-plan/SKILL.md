@@ -15,9 +15,9 @@ Use Codex behavior first:
 - Never use Claude-only tools or assumptions: no `CronCreate`, `CronList`, `CronDelete`, `Agent`/`Task` tool syntax, `allowed-tools`, `.claude/settings.json`, or automatic Claude hooks.
 - Use sub-agents only when the user explicitly asks for agents, parallel work, or delegation. For Z Skills landing gates, prefer a fresh independent verification context when it is available without violating the current Codex delegation policy; otherwise run inline, disclose lower assurance, and do not auto-land unless the user accepts it.
 - For isolation, create git worktrees explicitly with normal `git worktree` commands. Do not rely on an `isolation: "worktree"` parameter.
-- Config lookup order is project `.codex/zskills-config.json` first, then project `zskills-config.json`, then legacy `.claude/zskills-config.json` only if already present. Do not create new `.claude` runtime config for Codex.
+- Config lookup order is project `.agents/zskills-config.json` first, then project `zskills-config.json`, then legacy `.codex/zskills-config.json`, then legacy `.claude/zskills-config.json` only if already present. Do not create new `.claude` runtime config for Codex.
 - Scheduling is not automatic in Codex. If the user asks for recurring runs, explain the schedule and ask before installing any local cron/system scheduler. For normal turns, perform the requested work now.
-- Helper assets from upstream live at `/home/vscode/.codex/zskills-support`. Use project-local `scripts/*` first; inspect or copy/adapt support scripts only when needed.
+- Helper assets live at project `.agents/zskills-support` by default. Use project-local `scripts/*` first; fall back to `$CODEX_HOME/zskills-support` only for explicit global installs or legacy setups.
 - Preserve Codex safety rules: do not revert unrelated work, stage files by name, avoid destructive git commands, and verify from actual diffs/tests.
 
 Detailed upstream text is archived in `references/upstream-claude-adapted.md` for edge cases and future diffs. Load it only when the concise workflow below is insufficient.
@@ -29,7 +29,7 @@ Detailed upstream text is archived in `references/upstream-claude-adapted.md` fo
 
 1. Parse the request: plan file, optional phase, `status`, `finish`, `auto`, `pr`, or `direct`.
 2. Read the plan and current progress. For `status`, report phases, next work, blockers, and stop.
-3. Determine landing mode from explicit request, then config lookup order: `.codex/zskills-config.json`, `zskills-config.json`, legacy `.claude/zskills-config.json`, fallback `cherry-pick`. Also read `execution.base_branch`, `execution.remote`, `testing.*`, `ci.*`, and `dev_server.*` before choosing commands.
+3. Determine landing mode from explicit request, then config lookup order: `.agents/zskills-config.json`, `zskills-config.json`, legacy `.codex/zskills-config.json`, legacy `.claude/zskills-config.json`, fallback `cherry-pick`. Also read `execution.base_branch`, `execution.remote`, `testing.*`, `ci.*`, and `dev_server.*` before choosing commands.
 4. Identify the next incomplete phase unless a phase was specified.
 5. Validate scope: phase text, expected files, tests, and risks. If the phase is too broad, stop and recommend splitting or `refine-plan`.
 6. Execution mode:
@@ -49,7 +49,7 @@ Detailed upstream text is archived in `references/upstream-claude-adapted.md` fo
 1. Persist state in the plan progress tracker and `reports/plan-<slug>.md`.
 2. Write a concise handoff: completed phase, branch/worktree, tests, landing state, next phase, blockers, and exact suggested next invocation.
 3. Stop the turn unless the user explicitly requested same-turn continuation and the remaining context/risk is small.
-4. For `finish auto`, prefer resumable top-level turns over long in-context loops. Unattended completion is runner-backed by `/home/vscode/.codex/zskills-support/scripts/zskills-runner.sh`, which launches fresh `codex exec` invocations and validates durable state between chunks. Without that external runner, `finish auto` degrades to one chunk plus a handoff; Codex has no built-in Z Skills cron.
+4. For `finish auto`, prefer resumable top-level turns over long in-context loops. Unattended completion is runner-backed by `.agents/zskills-support/scripts/zskills-runner.sh` or `$CODEX_HOME/zskills-support/scripts/zskills-runner.sh`, which launches fresh `codex exec` invocations and validates durable state between chunks. Without that external runner, `finish auto` degrades to one chunk plus a handoff; Codex has no built-in Z Skills cron.
 5. Never combine multiple plan phases into one implementation chunk just to reduce orchestration overhead.
 
 ## Codex-Native Replacements
@@ -73,7 +73,7 @@ If no runner is active, report the exact next invocation instead of trying to co
 
 ## Landing Modes
 
-Use one shared config contract across Z Skills. Read `.codex/zskills-config.json`, then `zskills-config.json`, then legacy `.claude/zskills-config.json`.
+Use one shared config contract across Z Skills. Read `.agents/zskills-config.json`, then `zskills-config.json`, then legacy `.codex/zskills-config.json`, then legacy `.claude/zskills-config.json`.
 
 - `execution.landing: "direct"`: work on the current branch/main only with a clean tree, no unrelated changes, explicit current-turn authorization for broad/autonomous work, and `execution.main_protected` false or explicitly overridden after warning.
 - `execution.landing: "cherry-pick"`: work in a manual git worktree, commit the phase there, verify, then cherry-pick the scoped commit back to `${execution.base_branch:-main}` from `${execution.remote:-origin}`. This is the default.
@@ -83,7 +83,7 @@ Explicit request words `direct` or `pr` override config for the current invocati
 
 ## Landing Helper Contract
 
-Use project-local helpers first. If absent, inspect or adapt `/home/vscode/.codex/zskills-support/scripts/*` before relying on prose:
+Use project-local helpers first. If absent, inspect `.agents/zskills-support/scripts/*` or `$CODEX_HOME/zskills-support/scripts/*` before relying on prose:
 
 - `worktree-add-safe.sh`: create isolated worktrees and reject branch/path poisoning.
 - `write-landed.sh` and `land-phase.sh`: record scoped landing state and cleanup only expected ephemeral files.
@@ -114,7 +114,7 @@ Tracking files are ephemeral gates. Do not include `.zskills/`, `.zskills-tracke
 ## Post-Landing Gates
 
 - Before landing, pushing, scheduling another chunk, or declaring completion, re-check whether main/base moved since verification. If it moved, re-run verification on the current diff.
-- After landing, run project-local `scripts/post-run-invariants.sh` when available. If absent, inspect or adapt `/home/vscode/.codex/zskills-support/scripts/post-run-invariants.sh` when the project uses Z Skills tracking. Do not schedule the next chunk or declare completion if invariants fail.
+- After landing, run project-local `scripts/post-run-invariants.sh` when available. If absent, inspect or adapt `.agents/zskills-support/scripts/post-run-invariants.sh` or `$CODEX_HOME/zskills-support/scripts/post-run-invariants.sh` when the project uses Z Skills tracking. Do not schedule the next chunk or declare completion if invariants fail.
 - Before declaring a phase complete, inspect `git status --short`. Only expected ephemeral tracking files may remain uncommitted. Untracked reports, source files, tests, plans, or config files are a stop condition.
 
 ## Preserved Z Skills Invariants

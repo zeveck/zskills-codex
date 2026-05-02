@@ -37,43 +37,55 @@ of the default installable `skills/` tree. Its useful content lives in
 
 ## Install
 
-Install into Codex home:
+Install into a project checkout:
 
 ```bash
 bash scripts/install.sh
 ```
 
-Or choose an explicit target:
+This mirrors upstream ZSkills' project-local install model. The default install
+copies the active Codex skill set and support assets into the current git repo:
+
+```text
+.agents/skills/
+.agents/zskills-support/
+.agents/zskills-config.json
+```
+
+Codex's documented repository skill discovery scans `.agents/skills` from the
+current working directory up to the repository root, so this is the active
+repo-local skill location rather than a staging directory.
+
+Use `--project <path>` to install into a different repo. Existing
+`.agents/zskills-config.json` files are preserved.
+
+Use an explicit global install only when you want user-level skills under
+`$CODEX_HOME`:
 
 ```bash
+bash scripts/install.sh --global
 bash scripts/install.sh --codex-home "$HOME/.codex"
 ```
 
-By default the installer also initializes project runtime config at
-`.codex/zskills-config.json` in the current git repo. It does not overwrite an
-existing config. Use `--project <path>` to initialize a different repo, or
-`--no-project-config` when installing only the Codex-home skill package.
-
-The installer copies files into:
+Global install copies files into:
 
 ```text
 $CODEX_HOME/skills/
 $CODEX_HOME/zskills-support/
 ```
 
-It replaces this distribution's own skill directories and support directory,
-but preserves unrelated existing skill directories under `$CODEX_HOME/skills`.
-It does not copy skills, docs, or support scripts into your target project repos.
-Project repos may still contain normal runtime artifacts created by workflows,
+Both install modes replace this distribution's own skill directories and support
+directory at the target, while preserving unrelated existing skill directories.
+Project repos may also contain normal runtime artifacts created by workflows,
 such as:
 
 - `reports/plan-*.md`
-- `.codex/zskills-config.json`
+- `.agents/zskills-config.json`
 - ignored `.zskills/` tracking and log state
 
 During install, bundled references to the original development Codex home are
-rewritten to the selected `$CODEX_HOME`, so custom Codex home paths are
-supported.
+rewritten to the selected target root, so project-local and custom Codex home
+paths are supported.
 
 ## Runtime Policy
 
@@ -83,9 +95,10 @@ manual worktrees, explicit config checks, and file-backed tracking gates.
 
 Config lookup order:
 
-1. project `.codex/zskills-config.json`
+1. project `.agents/zskills-config.json`
 2. project `zskills-config.json`
-3. legacy `.claude/zskills-config.json`, only if already present
+3. legacy `.codex/zskills-config.json`, only if already present
+4. legacy `.claude/zskills-config.json`, only if already present
 
 Landing modes preserved from ZSkills:
 
@@ -101,7 +114,7 @@ stops with a durable handoff.
 Unattended `finish auto` is runner-backed:
 
 ```bash
-$CODEX_HOME/zskills-support/scripts/zskills-runner.sh \
+.agents/zskills-support/scripts/zskills-runner.sh \
   run-plan <plan> finish auto \
   --repo <repo>
 ```

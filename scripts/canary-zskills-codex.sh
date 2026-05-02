@@ -147,20 +147,26 @@ install_preserves_unrelated() {
   tmp=$(mktemp -d)
   mkdir -p "$tmp/codex-home/skills/existing" "$tmp/codex-home/skills/run-plan" "$tmp/project"
   git -C "$tmp/project" init -q
+
+  bash "$ROOT/scripts/install.sh" --project "$tmp/project"
+  [ -f "$tmp/project/.agents/skills/run-plan/SKILL.md" ] || fail "project-local run-plan was not installed"
+  [ -f "$tmp/project/.agents/zskills-support/scripts/zskills-runner.sh" ] || fail "project-local support was not installed"
+  [ -f "$tmp/project/.agents/zskills-config.json" ] || fail "project config was not initialized"
+  ! rg -n '/home/vscode/.codex' "$tmp/project/.agents/skills" "$tmp/project/.agents/zskills-support"
+
   printf '%s\n' '---' 'name: existing' 'description: keep me' '---' > "$tmp/codex-home/skills/existing/SKILL.md"
   printf old > "$tmp/codex-home/skills/run-plan/OLD"
   bash "$ROOT/scripts/install.sh" --codex-home "$tmp/codex-home" --project "$tmp/project"
   [ -f "$tmp/codex-home/skills/existing/SKILL.md" ] || fail "unrelated skill was removed"
   [ ! -e "$tmp/codex-home/skills/run-plan/OLD" ] || fail "owned stale skill file survived"
   [ -f "$tmp/codex-home/skills/run-plan/SKILL.md" ] || fail "run-plan was not installed"
-  [ -f "$tmp/project/.codex/zskills-config.json" ] || fail "project config was not initialized"
-  python3 - "$tmp/project/.codex/zskills-config.json" <<'PY'
+  python3 - "$tmp/project/.agents/zskills-config.json" <<'PY'
 import json, sys
 data = json.load(open(sys.argv[1]))
 assert data["execution"]["landing"] == "cherry-pick"
 assert data["runner"]["allow_direct_unattended"] is False
 PY
-  python3 - "$tmp/project/.codex/zskills-config.json" <<'PY'
+  python3 - "$tmp/project/.agents/zskills-config.json" <<'PY'
 import json, sys
 p = sys.argv[1]
 data = json.load(open(p))
@@ -168,7 +174,7 @@ data["execution"]["landing"] = "pr"
 json.dump(data, open(p, "w"))
 PY
   bash "$ROOT/scripts/install.sh" --codex-home "$tmp/codex-home" --project "$tmp/project"
-  python3 - "$tmp/project/.codex/zskills-config.json" <<'PY'
+  python3 - "$tmp/project/.agents/zskills-config.json" <<'PY'
 import json, sys
 data = json.load(open(sys.argv[1]))
 assert data["execution"]["landing"] == "pr"
@@ -206,7 +212,7 @@ make_direct_repo() {
   git -C "$repo" init -q -b main
   git -C "$repo" config user.email canary@example.test
   git -C "$repo" config user.name "ZSkills Canary"
-  mkdir -p "$repo/plans" "$repo/.codex" "$repo/scripts"
+  mkdir -p "$repo/plans" "$repo/.agents" "$repo/scripts"
   printf 'phase-0: seed\n' > "$repo/counter.txt"
   cat > "$repo/scripts/test.sh" <<'EOF'
 #!/usr/bin/env bash
@@ -225,7 +231,7 @@ PY
 EOF
   chmod +x "$repo/scripts/test.sh"
   printf '.zskills/\n.test-results.txt\n' > "$repo/.gitignore"
-  cat > "$repo/.codex/zskills-config.json" <<EOF
+  cat > "$repo/.agents/zskills-config.json" <<EOF
 {
   "execution": {"landing": "direct", "main_protected": false, "base_branch": "main", "remote": "origin"},
   "testing": {"unit_cmd": "bash scripts/test.sh", "full_cmd": "bash scripts/test.sh", "output_file": ".test-results.txt", "file_patterns": ["counter.txt", "scripts/test.sh"]},
@@ -281,7 +287,7 @@ make_cherry_repo() {
   git -C "$repo" config user.email canary@example.test
   git -C "$repo" config user.name "ZSkills Canary"
   git -C "$repo" remote add origin "$origin"
-  mkdir -p "$repo/plans" "$repo/.codex" "$repo/scripts"
+  mkdir -p "$repo/plans" "$repo/.agents" "$repo/scripts"
   printf 'base\n' > "$repo/value.txt"
   cat > "$repo/scripts/test.sh" <<'EOF'
 #!/usr/bin/env bash
@@ -291,7 +297,7 @@ grep -qx 'cherry-pick-canary' value.txt
 EOF
   chmod +x "$repo/scripts/test.sh"
   printf '.zskills/\n.test-results.txt\n' > "$repo/.gitignore"
-  cat > "$repo/.codex/zskills-config.json" <<EOF
+  cat > "$repo/.agents/zskills-config.json" <<EOF
 {
   "execution": {"landing": "cherry-pick", "main_protected": false, "base_branch": "main", "remote": "origin", "branch_prefix": "zskills-canary/"},
   "testing": {"unit_cmd": "bash scripts/test.sh", "full_cmd": "bash scripts/test.sh", "output_file": ".test-results.txt", "file_patterns": ["value.txt", "scripts/test.sh"]},

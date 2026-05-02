@@ -16,7 +16,7 @@ Observed: `zskills-dev` is the development source. Its README tells end users to
 
 Observed: `zskills-cc` is a cross-client compatibility conversion. Its README says one source tree generates both `.claude/skills` and `.codex/skills`, with Codex compatibility adapters and Claude output that omits Codex-specific adapter text. Its strategy is dual-client distribution and generated fidelity, not a pure Codex rewrite.
 
-Observed: `zskills-codex` in this local checkout is the Codex-only implementation. Its README and local paths (`skills/`, `zskills-support/`, `.codex/zskills-config.json`, `scripts/install.sh`, `plans/`, `reports/`) show a port that preserves Z Skills workflow intent while replacing Claude runtime mechanics with Codex-native behavior. Unknown/Observed split: the GitHub publication target `https://github.com/zeveck/zskills-codex` was public but appeared empty or unpopulated through the API during Phase 2, so the remote is deployment context rather than evidence of the implementation.
+Observed: `zskills-codex` in this local checkout is the Codex-only implementation. Its README and local paths (`skills/`, `zskills-support/`, `.agents/zskills-config.json`, `scripts/install.sh`, `plans/`, `reports/`) show a port that preserves Z Skills workflow intent while replacing Claude runtime mechanics with Codex-native behavior. Unknown/Observed split: the GitHub publication target `https://github.com/zeveck/zskills-codex` was public but appeared empty or unpopulated through the API during Phase 2, so the remote is deployment context rather than evidence of the implementation.
 
 ## Repository Roles
 
@@ -26,8 +26,8 @@ Observed: `zskills-codex` in this local checkout is the Codex-only implementatio
 | Audience | Claude Code end users. | Maintainers and contributors preparing releases. | Users or maintainers needing both Claude and Codex installs. | Codex users and maintainers evaluating a native Codex port. |
 | Release posture | Public release; tag `2026.04.0` observed. | Pre-release; active branches and newer `main` observed. | Compatibility preview; tag `2026.04.0-cc.0` observed. | Local implementation exists; GitHub publication target appeared empty. |
 | Runtime client | Claude-specific. | Claude-specific upstream development source. | dual-client: Claude plus Codex generated outputs. | Codex-specific. |
-| Skill location | `.claude/skills/` and `skills/`. | `.claude/skills/` and `skills/`. | `.claude/skills/` plus `.codex/skills/`. | `skills/` installed to `$CODEX_HOME/skills/`. |
-| Config model | `.claude/zskills-config.json`. | Release source for `.claude` config behavior. | Compatibility generation and client-specific outputs. | `.codex/zskills-config.json` with Codex-native config schema assets. |
+| Skill location | `.claude/skills/` and `skills/`. | `.claude/skills/` and `skills/`. | `.claude/skills/` plus `.codex/skills/`. | `skills/` installed to project `.agents/skills/` by default. |
+| Config model | `.claude/zskills-config.json`. | Release source for `.claude` config behavior. | Compatibility generation and client-specific outputs. | `.agents/zskills-config.json` with Codex-native config schema assets. |
 | Automation model | Claude hooks and scripts. | Claude hooks, scripts, tests, release workflow, and canary work. | Conversion pipeline, overlays, local patches, tests, generated manifests. | Support scripts under `zskills-support/`, including runner, gate, post-run invariants, and worktree helper. |
 | Testing evidence | `.github/workflows/test.yml`, `tests/`, skill verification workflows. | `.github/workflows/test.yml`, `ship-to-prod.yml`, `tests/`, plans, reports. | `tests/`, reports, generated manifests, drift/fidelity checks described in README. | `scripts/canary-zskills-codex.sh`, canary test scripts, plans, reports; local `tests/` absent. |
 | Repository state evidence | Public repo page, README, trees, commit, tag. | Public repo page, README, branches, workflows, commit, tag. | Public repo page, README, generated trees, commit, tag. | Local files for implementation; GitHub API evidence for publication target. |
@@ -41,7 +41,7 @@ The roles should remain distinct. `zskills` is the public release; `zskills-dev`
 
 Observed Claude-specific behavior appears in `zskills` and `zskills-dev`: skills are documented as `.claude/skills/<name>/SKILL.md`, installation centers on `/update-zskills`, and the config target is `.claude/zskills-config.json`. The Phase 2 evidence also records hooks and scripts directories, which are part of the Claude-oriented automation surface.
 
-Observed Codex-specific behavior appears in this local `zskills-codex` implementation: the README describes a Codex-only port, installation uses `bash scripts/install.sh`, skills are installed into `$CODEX_HOME/skills/`, support assets are installed into `$CODEX_HOME/zskills-support/`, and project runtime config is `.codex/zskills-config.json`. The local support tree includes Codex-native runner, gate, post-run invariant, and worktree helper scripts.
+Observed Codex-specific behavior appears in this local `zskills-codex` implementation: the README describes a Codex-only port, installation uses `bash scripts/install.sh`, skills are installed into project `.agents/skills/`, support assets into `.agents/zskills-support/`, and project runtime config is `.agents/zskills-config.json` by default. The local support tree includes Codex-native runner, gate, post-run invariant, and worktree helper scripts.
 
 Observed dual-client behavior appears in `zskills-cc`: checked-in `.claude/skills` and `.codex/skills` make a fresh clone usable by both clients, while source directories such as `codex-overlays/`, `local-patches/`, `templates/`, `scripts/`, `tests/`, `plans/`, and `reports/` support a compatibility conversion pipeline.
 
@@ -55,7 +55,7 @@ Observed: `zskills-dev` uses the same public install destination in its README f
 
 Observed: `zskills-cc` is designed around generated client outputs. Inferred: its installation and configuration model should preserve a client boundary, because the README explicitly distinguishes Codex output with compatibility adapters from Claude output without Codex adapter text.
 
-Observed: `zskills-codex` uses `bash scripts/install.sh`, `$CODEX_HOME/skills/`, `$CODEX_HOME/zskills-support/`, and `.codex/zskills-config.json`. Inferred: changes from upstream that mention `.claude`, hooks, or Claude-only scheduling need Codex-native adaptation before import.
+Observed: `zskills-codex` uses `bash scripts/install.sh`, project `.agents/skills/`, project `.agents/zskills-support/`, and `.agents/zskills-config.json` by default. Inferred: changes from upstream that mention `.claude`, hooks, or Claude-only scheduling need Codex-native adaptation before import.
 
 ## Support Assets and Automation
 

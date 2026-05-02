@@ -18,13 +18,13 @@ Observed: `zskills-dev` at `https://github.com/zeveck/zskills-dev` is the develo
 
 Observed: `zskills-cc` at `https://github.com/zeveck/zskills-cc` is the Claude/Codex compatibility conversion. Its README says one source tree generates a Codex install with compatibility adapters and a Claude install without Codex-specific adapter text. Refreshed revision evidence showed `main` at `0791081b77999cd4410b56bdeae10a94b24486d0` and tag `2026.04.0-cc.0` resolving to `7f8b253b43ac311f4bd6998cd8a754d61963a753`.
 
-Observed: this local checkout is the actual `zskills-codex` implementation under review. Local `README.md` identifies it as a Codex-only port of `github.com/zeveck/zskills` at upstream commit `14dea81da487b2904ea7d69a27295f1869206cdf`, with Codex-native behavior under `skills/`, `zskills-support/`, `.codex/zskills-config.json`, `scripts/`, `plans/`, and `reports/`.
+Observed: this local checkout is the actual `zskills-codex` implementation under review. Local `README.md` identifies it as a Codex-only port of `github.com/zeveck/zskills` at upstream commit `14dea81da487b2904ea7d69a27295f1869206cdf`, with Codex-native behavior under `skills/`, `zskills-support/`, `.agents/zskills-config.json`, `scripts/`, `plans/`, and `reports/`.
 
 Observed: `https://github.com/zeveck/zskills-codex` is the intended publication target. Public Git evidence observed during this canary showed no branch or tag refs via `git ls-remote`, and earlier API evidence recorded size `0`, no root contents, and no usable commit evidence. Inferred: the publication target is empty or unpopulated at research time, while the local repository is the implementation.
 
 ## Research Scope and Method
 
-The research compared four targets: `zskills`, `zskills-dev`, `zskills-cc`, and `zskills-codex`. Current GitHub evidence came from repository pages, raw README files, GitHub URLs listed in `zskills-online-variant-report-canary/phase-2-current-evidence.md`, and Phase 5 `git ls-remote` checks. Local implementation evidence came from paths in this checkout, especially `README.md`, `skills/`, `zskills-support/`, `.codex/zskills-config.json`, `scripts/`, `plans/`, and `reports/`.
+The research compared four targets: `zskills`, `zskills-dev`, `zskills-cc`, and `zskills-codex`. Current GitHub evidence came from repository pages, raw README files, GitHub URLs listed in `zskills-online-variant-report-canary/phase-2-current-evidence.md`, and Phase 5 `git ls-remote` checks. Local implementation evidence came from paths in this checkout, especially `README.md`, `skills/`, `zskills-support/`, `.agents/zskills-config.json`, `scripts/`, `plans/`, and `reports/`.
 
 This report treats `zskills-codex` as two related but distinct things: the local Codex-only implementation in this working tree, and the public GitHub publication target at `https://github.com/zeveck/zskills-codex`. Claims about product behavior use local paths. Claims about remote publication state use GitHub evidence and are labeled as deployment context.
 
@@ -42,7 +42,7 @@ This report treats `zskills-codex` as two related but distinct things: the local
 | `README.md` | Local Codex-only purpose, upstream commit, install model, runtime policy, runner behavior. | Observed |
 | `skills/` | Local installed skill wrappers and Codex skill set. | Observed |
 | `zskills-support/` | Codex-native support scripts, config schema, runner, gates, post-run invariants, archived upstream references. | Observed |
-| `.codex/zskills-config.json` | Local config lookup and default cherry-pick landing configuration. | Observed |
+| `.agents/zskills-config.json` | Local config lookup and default cherry-pick landing configuration. | Observed |
 | `scripts/test-zskills-online-variant-report-canary.sh` | Report quality gates used by this canary. | Observed |
 
 ## Repository-by-Repository Findings
@@ -75,7 +75,7 @@ Inferred: the central risk for `zskills-cc` is generated output drift or client 
 
 Observed: this local implementation is Codex-only. It does not try to be a dual Claude/Codex distribution. Local `README.md` says it preserves ZSkills workflow intent while replacing Claude-specific runtime mechanics with Codex-native behavior.
 
-Observed: the local install model uses `bash scripts/install.sh`, `$CODEX_HOME/skills/`, `$CODEX_HOME/zskills-support/`, and `.codex/zskills-config.json`. Runtime policy explicitly avoids Claude Code hooks, `.claude` runtime settings, and Claude cron tools. `run-plan finish auto` is runner-backed by fresh top-level `codex exec` invocations and file-backed `.zskills/tracking` gates.
+Observed: the local install model uses `bash scripts/install.sh` to install project-local `.agents/skills/`, `.agents/zskills-support/`, and `.agents/zskills-config.json` by default, matching upstream ZSkills' project-local install intent. Runtime policy explicitly avoids Claude Code hooks, `.claude` runtime settings, and Claude cron tools. Explicit user-level installs under `$CODEX_HOME/skills/` and `$CODEX_HOME/zskills-support/` remain available through `--global` or `--codex-home`.
 
 Observed: local validation is represented by scripts and reports rather than a `tests/` directory in this checkout. Relevant local checks include `scripts/canary-zskills-codex.sh`, `scripts/test-simple-run-plan-canary.sh`, `scripts/test-zskills-variant-review-canary.sh`, and `scripts/test-zskills-online-variant-report-canary.sh`.
 
@@ -88,8 +88,8 @@ Unknown: consumers cannot audit the intended public `zskills-codex` remote imple
 | Primary role | Public Claude Code release. | Development source for future release work. | Cross-client compatibility conversion. | Codex-only implementation in this local checkout. |
 | Audience | Claude Code users. | Maintainers. | Maintainers and testers of Claude/Codex compatibility. | Codex users and maintainers. |
 | Runtime model | Claude Code skills and hooks. | Claude Code development workflow, possibly pre-release. | Generated Claude and Codex outputs. | Codex-native skills, runner, and gates. |
-| Skill location | `.claude/skills` after install; source `skills/`. | `.claude/skills` and source `skills/`. | Checked-in `.claude/skills` and `.codex/skills`. | Source `skills/`, installed to `$CODEX_HOME/skills`. |
-| Config path | `.claude/zskills-config.json`. | `.claude/zskills-config.json` in release model. | Client-scoped `.claude` and `.codex` config. | `.codex/zskills-config.json`. |
+| Skill location | `.claude/skills` after install; source `skills/`. | `.claude/skills` and source `skills/`. | Checked-in `.claude/skills` and `.codex/skills`. | Source `skills/`, installed to project `.agents/skills` by default. |
+| Config path | `.claude/zskills-config.json`. | `.claude/zskills-config.json` in release model. | Client-scoped `.claude` and `.codex` config. | `.agents/zskills-config.json`. |
 | Hooks | Claude hooks installed by `/update-zskills`. | Hook changes may be active or experimental. | Must keep hook assumptions client-scoped. | Claude hooks rejected; manual gates and runner scripts replace them. |
 | Runner behavior | `/run-plan` with worktrees and verifier agents. | Candidate changes to runner behavior. | Compatibility text and helpers for both clients. | `zskills-runner.sh`, fresh `codex exec`, tracking markers. |
 | Automation assets | `config/`, `hooks/`, `scripts/`, `tests/`, `reports/`, `plans/`. | Adds release workflow, canaries, branches, and in-progress reports. | `codex-overlays/`, `local-patches/`, `templates/`, generation scripts, tests. | `zskills-support/`, installer, canary scripts, plans, reports. |
@@ -106,7 +106,7 @@ Unknown: consumers cannot audit the intended public `zskills-codex` remote imple
 | Client-neutral skill body improvements | Import directly if generated outputs remain valid. | Import directly if Codex skill semantics are unchanged. |
 | Claude-specific hook behavior | Adapt behind a client boundary. | Reject direct hook assumptions or adapt to Codex gates. |
 | Runner and tracking changes | Adapt separately for Claude and Codex outputs. | Adapt to `zskills-runner.sh`, top-level `codex exec`, and canonical markers. |
-| Installer/config changes | Generate separate `.claude` and `.codex` paths. | Rewrite to `$CODEX_HOME`, `.codex`, and local support scripts. |
+| Installer/config changes | Generate separate `.claude` and `.codex` paths. | Rewrite to project `.agents`, local support scripts, and optional explicit `$CODEX_HOME` global install paths. |
 | Unsupported frontmatter | Map or reject per generated client. | Reject if Codex skill loading cannot support it. |
 | Dev-only canaries and release machinery | Defer unless adopted by compatibility release policy. | Defer until publication target and release process are established. |
 | Tests and report conventions | Import concepts and add drift/fidelity checks. | Import or adapt shell canaries and parser-stable report headings. |
@@ -149,7 +149,7 @@ Observed risk: GitHub evidence may change after 2026-05-02. This already happene
 
 Observed risk: the `https://github.com/zeveck/zskills-codex` publication target appeared empty or unpopulated. The report can evaluate the local implementation, but external consumers cannot yet audit that remote.
 
-Observed constraint: this local checkout has no configured `origin` remote even though `.codex/zskills-config.json` names `origin`; remote freshness for the local repo could not be checked through the configured remote.
+Observed constraint: this local checkout has no configured `origin` remote even though `.agents/zskills-config.json` names `origin`; remote freshness for the local repo could not be checked through the configured remote.
 
 Inferred risk: Claude-specific behavior, especially hooks, `.claude` paths, slash-command language, scheduler assumptions, and verifier-agent language, can break when copied into Codex without adaptation.
 
@@ -211,7 +211,7 @@ Local source paths:
 - `README.md`
 - `skills/`
 - `zskills-support/`
-- `.codex/zskills-config.json`
+- `.agents/zskills-config.json`
 - `scripts/install.sh`
 - `scripts/canary-zskills-codex.sh`
 - `scripts/test-zskills-online-variant-report-canary.sh`

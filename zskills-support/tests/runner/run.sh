@@ -22,7 +22,7 @@ make_repo() {
   git -C "$tmpdir" init -q
   git -C "$tmpdir" config user.email runner@example.test
   git -C "$tmpdir" config user.name "Runner Test"
-  mkdir -p "$tmpdir/plans" "$tmpdir/.codex"
+  mkdir -p "$tmpdir/plans" "$tmpdir/.agents"
   cat > "$tmpdir/plans/example.md" <<'MD'
 # Example Plan
 
@@ -32,7 +32,7 @@ make_repo() {
 | --- | --- | --- |
 | 1. Fixture Phase | ⬜ Not Started | Runner test fixture. |
 MD
-  cat > "$tmpdir/.codex/zskills-config.json" <<'JSON'
+  cat > "$tmpdir/.agents/zskills-config.json" <<'JSON'
 {
   "execution": {
     "landing": "cherry-pick"
@@ -59,7 +59,7 @@ make_multi_repo() {
   git -C "$tmpdir" init -q
   git -C "$tmpdir" config user.email runner@example.test
   git -C "$tmpdir" config user.name "Runner Test"
-  mkdir -p "$tmpdir/plans" "$tmpdir/.codex"
+  mkdir -p "$tmpdir/plans" "$tmpdir/.agents"
   cat > "$tmpdir/plans/example.md" <<'MD'
 # Example Plan
 
@@ -71,7 +71,7 @@ make_multi_repo() {
 | 2. Fixture Phase Two | ⬜ Not Started | Runner test fixture. |
 | 3. Fixture Phase Three | ⬜ Not Started | Runner test fixture. |
 MD
-  cat > "$tmpdir/.codex/zskills-config.json" <<'JSON'
+  cat > "$tmpdir/.agents/zskills-config.json" <<'JSON'
 {
   "execution": {
     "landing": "cherry-pick"
@@ -157,6 +157,26 @@ test_dry_run() {
   ! grep -q -- '--ask-for-approval' "$out"
   rm -f "$out"
   [ -z "$(git -C "$repo" status --short)" ]
+}
+
+test_config_precedence() {
+  local repo out
+  repo=$(make_repo)
+  mv "$repo/.agents/zskills-config.json" "$repo/zskills-config.json"
+  mkdir -p "$repo/.codex"
+  python3 - "$repo/.codex/zskills-config.json" <<'PY'
+import json, sys
+data = {
+  "execution": {"landing": "direct"},
+  "runner": {"allow_direct_unattended": True}
+}
+json.dump(data, open(sys.argv[1], "w"))
+PY
+  out=$(mktemp)
+  "$SCRIPT" status plans/example.md --repo "$repo" > "$out"
+  grep -q "^config=$repo/zskills-config.json$" "$out"
+  grep -q '^execution_landing=cherry-pick$' "$out"
+  rm -f "$out"
 }
 
 test_same_basename_disambiguates() {
@@ -312,14 +332,14 @@ test_conflict_refusal() {
 test_direct_refusal() {
   local repo
   repo=$(make_repo)
-  python3 - "$repo/.codex/zskills-config.json" <<'PY'
+  python3 - "$repo/.agents/zskills-config.json" <<'PY'
 import json, sys
 p = sys.argv[1]
 data = json.load(open(p))
 data["execution"]["landing"] = "direct"
 json.dump(data, open(p, "w"))
 PY
-  git -C "$repo" add .codex/zskills-config.json
+  git -C "$repo" add .agents/zskills-config.json
   git -C "$repo" commit -q -m direct-config
   if "$SCRIPT" run-plan plans/example.md finish auto --repo "$repo" >"$outdir"/zskills-runner-direct.out 2>&1; then
     echo "expected direct refusal" >&2
@@ -335,7 +355,7 @@ PY
 test_direct_dirty_refusal() {
   local repo
   repo=$(make_repo)
-  python3 - "$repo/.codex/zskills-config.json" <<'PY'
+  python3 - "$repo/.agents/zskills-config.json" <<'PY'
 import json, sys
 p = sys.argv[1]
 data = json.load(open(p))
@@ -343,7 +363,7 @@ data["execution"]["landing"] = "direct"
 data["runner"]["allow_direct_unattended"] = True
 json.dump(data, open(p, "w"))
 PY
-  git -C "$repo" add .codex/zskills-config.json
+  git -C "$repo" add .agents/zskills-config.json
   git -C "$repo" commit -q -m direct-config
   printf 'dirty\n' > "$repo/dirty.txt"
   if "$SCRIPT" run-plan plans/example.md finish auto --repo "$repo" >"$outdir"/zskills-runner-direct-dirty.out 2>&1; then
@@ -357,7 +377,7 @@ PY
 test_direct_runner_residue_refusal() {
   local repo
   repo=$(make_repo)
-  python3 - "$repo/.codex/zskills-config.json" <<'PY'
+  python3 - "$repo/.agents/zskills-config.json" <<'PY'
 import json, sys
 p = sys.argv[1]
 data = json.load(open(p))
@@ -365,7 +385,7 @@ data["execution"]["landing"] = "direct"
 data["runner"]["allow_direct_unattended"] = True
 json.dump(data, open(p, "w"))
 PY
-  git -C "$repo" add .codex/zskills-config.json
+  git -C "$repo" add .agents/zskills-config.json
   git -C "$repo" commit -q -m direct-config
   mkdir -p "$repo/.zskills/runner/other.lock"
   printf 'pid=other\n' > "$repo/.zskills/runner/other.lock/owner"
@@ -812,7 +832,7 @@ PY
 test_pr_dry_run() {
   local repo before after
   repo=$(make_repo)
-  python3 - "$repo/.codex/zskills-config.json" <<'PY'
+  python3 - "$repo/.agents/zskills-config.json" <<'PY'
 import json, sys
 p = sys.argv[1]
 data = json.load(open(p))
@@ -820,7 +840,7 @@ data["execution"]["landing"] = "pr"
 data["runner"]["pr_max_rechecks"] = 0
 json.dump(data, open(p, "w"))
 PY
-  git -C "$repo" add .codex/zskills-config.json
+  git -C "$repo" add .agents/zskills-config.json
   git -C "$repo" commit -q -m pr-config
   before=$(git -C "$repo" rev-parse HEAD)
   "$SCRIPT" run-plan plans/example.md finish auto --repo "$repo" --dry-run > "$outdir"/zskills-runner-pr.out
@@ -835,6 +855,7 @@ case "$CASE" in
   help) test_help ;;
   nonrepo) test_nonrepo_refusal ;;
   dry-run) test_dry_run ;;
+  config-precedence) test_config_precedence ;;
   same-basename) test_same_basename_disambiguates ;;
   missing-codex) test_missing_codex ;;
   dangerous) test_dangerous_refusal ;;
@@ -871,6 +892,7 @@ case "$CASE" in
     test_help
     test_nonrepo_refusal
     test_dry_run
+    test_config_precedence
     test_same_basename_disambiguates
     test_missing_codex
     test_dangerous_refusal

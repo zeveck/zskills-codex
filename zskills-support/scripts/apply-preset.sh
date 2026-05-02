@@ -1,6 +1,6 @@
 #!/bin/bash
 # Legacy Claude-only preset helper. Codex workflows should prefer
-# .codex/zskills-config.json and must not install Claude hooks.
+# .agents/zskills-config.json and must not install Claude hooks.
 #
 # Usage: bash scripts/apply-preset.sh <cherry-pick|locked-main-pr|direct>
 # Env:   PROJECT_ROOT — override root (default: $(pwd))

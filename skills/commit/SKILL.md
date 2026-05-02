@@ -14,9 +14,9 @@ Use Codex behavior first:
 - Never use Claude-only tools or assumptions: no `CronCreate`, `CronList`, `CronDelete`, `Agent`/`Task` tool syntax, `allowed-tools`, `.claude/settings.json`, or automatic Claude hooks.
 - Use sub-agents only when the user explicitly asks for agents, parallel work, or delegation. For Z Skills landing gates, prefer a fresh independent verification context when it is available without violating the current Codex delegation policy; otherwise run inline, disclose lower assurance, and do not auto-land unless the user accepts it.
 - For isolation, create git worktrees explicitly with normal `git worktree` commands. Do not rely on an `isolation: "worktree"` parameter.
-- Config lookup order is project `.codex/zskills-config.json` first, then project `zskills-config.json`, then legacy `.claude/zskills-config.json` only if already present. Do not create new `.claude` runtime config for Codex.
+- Config lookup order is project `.agents/zskills-config.json` first, then project `zskills-config.json`, then legacy `.codex/zskills-config.json`, then legacy `.claude/zskills-config.json` only if already present. Do not create new `.claude` runtime config for Codex.
 - Scheduling is not automatic in Codex. If the user asks for recurring runs, explain the schedule and ask before installing any local cron/system scheduler. For normal turns, perform the requested work now.
-- Helper assets from upstream live at `/home/vscode/.codex/zskills-support`. Use project-local `scripts/*` first; inspect or copy/adapt support scripts only when needed.
+- Helper assets live at project `.agents/zskills-support` by default. Use project-local `scripts/*` first; fall back to `$CODEX_HOME/zskills-support` only for explicit global installs or legacy setups.
 - Preserve Codex safety rules: do not revert unrelated work, stage files by name, avoid destructive git commands, and verify from actual diffs/tests.
 
 Detailed upstream text is archived in `references/upstream-claude-adapted.md` for edge cases and future diffs. Load it only when the concise workflow below is insufficient.
@@ -45,7 +45,7 @@ Detailed upstream text is archived in `references/upstream-claude-adapted.md` fo
 
 ## Landing Modes
 
-Use the shared Z Skills config lookup order: `.codex/zskills-config.json`, `zskills-config.json`, then legacy `.claude/zskills-config.json`.
+Use the shared Z Skills config lookup order: `.agents/zskills-config.json`, `zskills-config.json`, legacy `.codex/zskills-config.json`, then legacy `.claude/zskills-config.json`.
 
 - `direct`: commit on the current branch. If the branch is `${execution.base_branch:-main}` and `execution.main_protected` is true, stop and require explicit user override.
 - `cherry-pick`: commit in the current worktree/branch, verify, then cherry-pick the scoped commit to `${execution.base_branch:-main}` when landing is requested.
@@ -55,7 +55,7 @@ Use the shared Z Skills config lookup order: `.codex/zskills-config.json`, `zski
 
 Never amend, rebase, reset, or force-push unless the user explicitly asks. If the worktree is dirty with unrelated changes, commit only the related paths.
 Do not use stash as part of commit safety.
-Before `land`, `push`, or `pr`, use project-local gate helpers when available; otherwise run `/home/vscode/.codex/zskills-support/scripts/zskills-gate.sh` in the relevant mode when the repo uses Z Skills tracking.
+Before `land`, `push`, or `pr`, use project-local gate helpers when available; otherwise run `.agents/zskills-support/scripts/zskills-gate.sh` or `$CODEX_HOME/zskills-support/scripts/zskills-gate.sh` in the relevant mode when the repo uses Z Skills tracking.
 
 ## Preserved Z Skills Invariants
 

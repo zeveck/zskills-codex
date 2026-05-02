@@ -2,17 +2,17 @@
 
 Source: `github.com/zeveck/zskills` commit `14dea81da487b2904ea7d69a27295f1869206cdf`.
 
-This installation is a Codex-native port. Active skill files are concise wrappers under `/home/vscode/.codex/skills/<name>/SKILL.md`; verbose upstream/Claude-oriented workflow text is archived per skill at `references/upstream-claude-adapted.md`. Shared support assets live under `/home/vscode/.codex/zskills-support`; scripts in that tree are active Codex-native support only after inspection and canary coverage, while archived upstream references remain read-only compatibility material.
+This installation is a Codex-native port. Active skill files are concise wrappers installed project-locally under `.agents/skills/<name>/SKILL.md` by default; verbose upstream/Claude-oriented workflow text is archived per skill at `references/upstream-claude-adapted.md`. Shared support assets live under `.agents/zskills-support` by default; scripts in that tree are active Codex-native support only after inspection and canary coverage, while archived upstream references remain read-only compatibility material. User-level `$CODEX_HOME/skills` and `$CODEX_HOME/zskills-support` installs are explicit opt-in compatibility targets, not the default.
 
 Codex runtime policy:
 - Do not install or rely on `.claude/settings.json` for Codex.
 - Do not use Claude cron tools.
 - Treat Claude hooks as reference safety logic, not active enforcement.
-- Project `.codex/zskills-config.json` is the normal Codex runtime config and
+- Project `.agents/zskills-config.json` is the normal Codex runtime config and
   should be created by new installs. Legacy fallbacks exist only for older
   repos and compatibility checks.
 - Use explicit git worktrees. Implementation delegation needs explicit user authorization; verifier/reviewer sub-agents may be used only when allowed by the current Codex delegation policy. If they are unavailable or not authorized, run inline review, disclose the reduced assurance, and do not present it as fresh sub-agent verification.
-- Use `/home/vscode/.codex/zskills-support/config/zskills-config.schema.json` as the shared config schema. Active workflows should honor `testing.*`, `dev_server.*`, `ui.file_patterns`, and `ci.*` in addition to `execution.*`; `agents.min_model` is advisory only.
+- Use `.agents/zskills-support/config/zskills-config.schema.json` as the shared config schema when installed in a project. Active workflows should honor `testing.*`, `dev_server.*`, `ui.file_patterns`, and `ci.*` in addition to `execution.*`; `agents.min_model` is advisory only.
 
 Shared landing contract:
 - `execution.base_branch` defaults to `main`; `execution.remote` defaults to `origin`.
@@ -26,8 +26,8 @@ Canonical tracking markers:
 - `handoff.run-plan.<tracking-id>` between chunked `finish` turns.
 - `pipeline.fix-issues.<sprint-id>`, `step.fix-issues.<sprint-id>.*`, `issue.<issue-id>.*`, and `fulfilled.verify-changes.<sprint-id>` for issue sprints.
 
-`/home/vscode/.codex/zskills-support/scripts/zskills-gate.sh` is a Codex-native helper for pre-land, pre-continue, and pre-push checks. It checks ignored tracking files, required markers, persistent reports, and untracked artifacts without running destructive commands.
-`/home/vscode/.codex/zskills-support/scripts/zskills-runner.sh` is also Codex-native support code. It is not an upstream Claude cron wrapper and must stay decoupled from `.claude/settings.json`, Claude hooks, and Claude scheduler tools.
+`.agents/zskills-support/scripts/zskills-gate.sh` is a Codex-native helper for pre-land, pre-continue, and pre-push checks. It checks ignored tracking files, required markers, persistent reports, and untracked artifacts without running destructive commands.
+`.agents/zskills-support/scripts/zskills-runner.sh` is also Codex-native support code. It is not an upstream Claude cron wrapper and must stay decoupled from `.claude/settings.json`, Claude hooks, and Claude scheduler tools.
 
 Codex does not hook-enforce these settings. Every landing-capable workflow must check the config before committing, landing, or pushing.
 
@@ -42,7 +42,7 @@ Chunked finish and external runner:
 - Terminal stops include no progress, missing handoff, missing report or verifier markers, failed gates, dirty project artifacts, stale git worktree residue, unsafe merge/rebase/cherry-pick state, nonzero child exit, max chunks, wall-clock timeout, and idle timeout.
 
 Runner validation:
-- `/home/vscode/.codex/zskills-support/tests/runner/run.sh all` must pass after runner or shared gate changes.
+- `.agents/zskills-support/tests/runner/run.sh all` must pass after runner or shared gate changes in installed projects; in this source repo, run `zskills-support/tests/runner/run.sh all`.
 - Named canaries cover multi-chunk completion, max-chunk stop, direct refusal, cherry-pick completion evidence, PR dry-run immutability, stale worktree refusal, missing report, missing verifier markers, dirty artifacts, no-progress blocking, nonzero child exit, timeout, and idle-timeout behavior.
 - `update-zskills` maintenance must preserve these canaries when refreshing upstream support assets.
 

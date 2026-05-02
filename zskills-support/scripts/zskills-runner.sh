@@ -463,10 +463,12 @@ validate_chunk_progress() {
 
 find_config() {
   local repo="$1"
-  if [ -f "$repo/.codex/zskills-config.json" ]; then
-    printf '%s\n' "$repo/.codex/zskills-config.json"
+  if [ -f "$repo/.agents/zskills-config.json" ]; then
+    printf '%s\n' "$repo/.agents/zskills-config.json"
   elif [ -f "$repo/zskills-config.json" ]; then
     printf '%s\n' "$repo/zskills-config.json"
+  elif [ -f "$repo/.codex/zskills-config.json" ]; then
+    printf '%s\n' "$repo/.codex/zskills-config.json"
   elif [ -f "$repo/.claude/zskills-config.json" ]; then
     printf '%s\n' "$repo/.claude/zskills-config.json"
   else
