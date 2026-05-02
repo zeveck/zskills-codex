@@ -92,13 +92,24 @@ quick_invariants() {
   [ ! -e "$ROOT/.claude" ] || fail ".claude must not exist in Codex-only distribution"
   ! rg -n 'social-seo|social seo|Social SEO' "$ROOT/skills" "$ROOT/zskills-support" "$ROOT/README.md" || fail "social-seo reference found in distribution content"
 
-  python3 - "$ROOT" <<'PY'
+python3 - "$ROOT" <<'PY'
 from pathlib import Path
 import re
 import sys
 
 root = Path(sys.argv[1])
 errors = []
+runtime_blocks = {}
+required_subagent_rule = (
+    "Use sub-agents only when the user explicitly asks for agents, parallel work, "
+    "or delegation, or when the user explicitly invokes a Z Skill step whose "
+    "workflow requires an independent reviewer, devil's-advocate critique, or "
+    "fresh verification context."
+)
+retired_subagent_rule = (
+    "Use sub-agents only when the user explicitly asks for agents, parallel work, "
+    "or delegation. For Z Skills landing gates"
+)
 for skill in sorted((root / "skills").iterdir()):
     md = skill / "SKILL.md"
     if not md.exists():
@@ -123,6 +134,29 @@ for skill in sorted((root / "skills").iterdir()):
     ref = skill / "references" / "upstream-claude-adapted.md"
     if not ref.exists():
         errors.append(f"{skill.name}: missing upstream adapted reference")
+    start = text.find("Use Codex behavior first:\n")
+    end = text.find("\nDetailed upstream text", start)
+    if start == -1 or end == -1:
+        errors.append(f"{skill.name}: missing shared Codex runtime block")
+    else:
+        block = text[start:end]
+        runtime_blocks.setdefault(block, []).append(skill.name)
+        if required_subagent_rule not in block:
+            errors.append(f"{skill.name}: missing bounded skill-required sub-agent rule")
+        if retired_subagent_rule in block:
+            errors.append(f"{skill.name}: retired narrower sub-agent rule is still present")
+    installed_md = root / ".agents" / "skills" / skill.name / "SKILL.md"
+    if not installed_md.exists():
+        errors.append(f"{skill.name}: missing installed .agents SKILL.md")
+    elif installed_md.read_text(encoding="utf-8") != text:
+        errors.append(f"{skill.name}: source and .agents SKILL.md differ")
+
+if len(runtime_blocks) != 1:
+    details = []
+    for block, names in runtime_blocks.items():
+        preview = " ".join(block.split())[:120]
+        details.append(f"{len(names)} skill(s): {', '.join(names)} :: {preview}")
+    errors.append("shared Codex runtime blocks drifted:\n" + "\n".join(details))
 
 support = root / "zskills-support"
 for rel in [
@@ -139,6 +173,8 @@ if errors:
     print("\n".join(errors))
     raise SystemExit(1)
 print("frontmatter_and_references=ok")
+print("shared_runtime_rules=ok")
+print("source_installed_skill_wrappers=ok")
 PY
 }
 
