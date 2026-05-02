@@ -112,9 +112,9 @@ plan_state() {
   python3 - "$file" <<'PY'
 import re, sys
 text = open(sys.argv[1], encoding="utf-8").read()
-done = len(re.findall(r"✅\s*Done", text))
+done = len(re.findall(r"✅\s*Done|\[[xX]\]\s*Phase\b", text))
 in_progress = len(re.findall(r"🟡\s*In Progress", text))
-not_started = len(re.findall(r"⬜\s*Not Started", text))
+not_started = len(re.findall(r"⬜\s*Not Started|\[\s\]\s*Phase\b", text))
 print(f"plan_state=present")
 print(f"plan_done_count={done}")
 print(f"plan_in_progress_count={in_progress}")

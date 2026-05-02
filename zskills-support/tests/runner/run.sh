@@ -413,6 +413,27 @@ test_hashes() {
   rm -f "$outdir"/zskills-runner-status.out
 }
 
+test_legacy_checkbox_status() {
+  local repo out
+  repo=$(make_repo)
+  cat > "$repo/plans/legacy.md" <<'MD'
+# Legacy Checkbox Plan
+
+## Progress Tracker
+
+- [x] Phase 1: Complete fixture phase
+- [ ] Phase 2: Remaining fixture phase
+- [ ] Phase 3: Remaining fixture phase
+MD
+  git -C "$repo" add plans/legacy.md
+  git -C "$repo" commit -q -m legacy-checkbox-fixture
+  out=$(mktemp)
+  "$SCRIPT" status plans/legacy.md --repo "$repo" > "$out"
+  grep -q '^plan_done_count=1$' "$out"
+  grep -q '^plan_not_started_count=2$' "$out"
+  rm -f "$out"
+}
+
 test_initial_state_record() {
   local repo state_file report tracking tracking_id
   repo=$(make_repo)
@@ -872,6 +893,7 @@ case "$CASE" in
   direct-dirty) test_direct_dirty_refusal ;;
   direct-runner-residue) test_direct_runner_residue_refusal ;;
   hashes) test_hashes ;;
+  legacy-checkbox-status) test_legacy_checkbox_status ;;
   initial-state) test_initial_state_record ;;
   fake-success) test_fake_success ;;
   fake-fail) test_fake_fail ;;
@@ -902,6 +924,7 @@ case "$CASE" in
     test_preflight
     test_direct_dirty_refusal
     test_direct_runner_residue_refusal
+    test_legacy_checkbox_status
     test_initial_state_record
     test_fake_success
     test_fake_fail
