@@ -29,18 +29,20 @@ Detailed upstream text is archived in `references/upstream-claude-adapted.md` fo
 
 1. Parse the request: plan file, optional phase, `status`, `finish`, `auto`, `pr`, or `direct`.
 2. Read the plan and current progress. For `status`, report phases, next work, blockers, and stop.
-3. Determine landing mode from explicit request, then config lookup order: `.agents/zskills-config.json`, `zskills-config.json`, legacy `.codex/zskills-config.json`, legacy `.claude/zskills-config.json`, fallback `cherry-pick`. Also read `execution.base_branch`, `execution.remote`, `testing.*`, `ci.*`, and `dev_server.*` before choosing commands.
-4. Identify the next incomplete phase unless a phase was specified.
-5. Validate scope: phase text, expected files, tests, and risks. If the phase is too broad, stop and recommend splitting or `refine-plan`.
-6. Execution mode:
+3. If the request is `finish auto` and it is not a runner-managed child prompt, start the external runner immediately when `.agents/zskills-support/scripts/zskills-runner.sh` or `$CODEX_HOME/zskills-support/scripts/zskills-runner.sh` exists. Run it as a shell command with the requested plan and `--repo <repo-root>`, relay the runner result, and do not manually execute a phase in the parent turn. This is the normal unattended entrypoint.
+4. Treat prompts containing `RUNNER-MANAGED CHUNK` or `External ZSkills runner contract for this chunk` as child chunks launched by `zskills-runner.sh`; in that case do not start the runner again. Execute exactly one incomplete phase and follow the supplied runner contract.
+5. Determine landing mode from explicit request, then config lookup order: `.agents/zskills-config.json`, `zskills-config.json`, legacy `.codex/zskills-config.json`, legacy `.claude/zskills-config.json`, fallback `cherry-pick`. Also read `execution.base_branch`, `execution.remote`, `testing.*`, `ci.*`, and `dev_server.*` before choosing commands.
+6. Identify the next incomplete phase unless a phase was specified.
+7. Validate scope: phase text, expected files, tests, and risks. If the phase is too broad, stop and recommend splitting or `refine-plan`.
+8. Execution mode:
    - `direct`: work in the current tree only when not protected and explicitly requested.
    - default/cherry-pick: create a manual git worktree under `/tmp/<project>-cp-<plan>-phase-<phase>` on a named branch.
    - `pr`: create a branch/worktree suitable for a PR.
-7. Implement the phase. If the user explicitly requested agents, delegate implementation to a worker with the worktree path; otherwise implement inline.
-8. Verify from actual diffs with a fresh verification context before landing. Use a separate verifier only when that is available under the current Codex delegation policy; otherwise run inline verification, disclose the lower assurance, and do not auto-land unless the user explicitly accepts inline verification.
-9. Update the plan progress tracker and write or update `reports/plan-<slug>.md`.
-10. Land only after verification passes and the requested mode allows it. Stage explicit files, avoid unrelated changes, and preserve user work.
-11. For `finish`, preserve chunking: execute at most one substantive phase per top-level Codex turn unless the user explicitly says to continue in the same turn after seeing the phase result.
+9. Implement the phase. If the user explicitly requested agents, delegate implementation to a worker with the worktree path; otherwise implement inline.
+10. Verify from actual diffs with a fresh verification context before landing. Use a separate verifier only when that is available under the current Codex delegation policy; otherwise run inline verification, disclose the lower assurance, and do not auto-land unless the user explicitly accepts inline verification.
+11. Update the plan progress tracker and write or update `reports/plan-<slug>.md`.
+12. Land only after verification passes and the requested mode allows it. Stage explicit files, avoid unrelated changes, and preserve user work.
+13. For `finish` without `auto`, preserve chunking: execute at most one substantive phase per top-level Codex turn unless the user explicitly says to continue in the same turn after seeing the phase result.
 
 ## Chunked Finish
 
@@ -48,8 +50,8 @@ Detailed upstream text is archived in `references/upstream-claude-adapted.md` fo
 
 1. Persist state in the plan progress tracker and `reports/plan-<slug>.md`.
 2. Write a concise handoff: completed phase, branch/worktree, tests, landing state, next phase, blockers, and exact suggested next invocation.
-3. Stop the turn unless the user explicitly requested same-turn continuation and the remaining context/risk is small.
-4. For `finish auto`, prefer resumable top-level turns over long in-context loops. Unattended completion is runner-backed by `.agents/zskills-support/scripts/zskills-runner.sh` or `$CODEX_HOME/zskills-support/scripts/zskills-runner.sh`, which launches fresh `codex exec` invocations and validates durable state between chunks. Without that external runner, `finish auto` degrades to one chunk plus a handoff; Codex has no built-in Z Skills cron.
+3. Stop the turn unless the user explicitly requested same-turn continuation and the remaining context/risk is small, or this is `finish auto` in the parent turn and the external runner is available.
+4. For `finish auto`, prefer resumable top-level turns over long in-context loops. Unattended completion is runner-backed by `.agents/zskills-support/scripts/zskills-runner.sh` or `$CODEX_HOME/zskills-support/scripts/zskills-runner.sh`; the skill must invoke that runner directly when available. The runner launches fresh `codex exec` invocations and validates durable state between chunks. Without that external runner, `finish auto` degrades to one chunk plus a handoff; Codex has no built-in Z Skills cron.
 5. Never combine multiple plan phases into one implementation chunk just to reduce orchestration overhead.
 
 ## Codex-Native Replacements

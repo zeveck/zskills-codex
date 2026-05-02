@@ -838,6 +838,8 @@ run_one_chunk() {
   child_prompt=$(cat <<EOF
 run-plan $PLAN finish auto
 
+RUNNER-MANAGED CHUNK: You are running under zskills-runner.sh. Do not invoke zskills-runner.sh again. Execute exactly one incomplete phase, then stop after writing the required report, tracking markers, and landing evidence.
+
 External ZSkills runner contract for this chunk:
 - Execute exactly one incomplete phase from $PLAN, then stop.
 - Repository root: $REPO_ROOT

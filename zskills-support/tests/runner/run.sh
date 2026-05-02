@@ -474,6 +474,8 @@ import json, sys
 argv = json.load(open(sys.argv[1]))
 prompt = argv[-1]
 assert "Resolved landing mode: cherry-pick" in prompt
+assert "RUNNER-MANAGED CHUNK" in prompt
+assert "Do not invoke zskills-runner.sh again" in prompt
 assert "You must use this mode" in prompt
 assert "Do not commit phase source changes directly in the main repo for cherry-pick mode." in prompt
 assert "Do not claim in the report that work was committed, cherry-picked, pushed, or fully landed until that git operation has actually succeeded." in prompt
