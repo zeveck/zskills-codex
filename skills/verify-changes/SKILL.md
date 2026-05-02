@@ -12,7 +12,7 @@ These Z Skills are native Codex workflows derived from `github.com/zeveck/zskill
 Use Codex behavior first:
 - Read the current repository before acting. Prefer existing project scripts, config, and conventions over the upstream examples.
 - Never use Claude-only tools or assumptions: no `CronCreate`, `CronList`, `CronDelete`, `Agent`/`Task` tool syntax, `allowed-tools`, `.claude/settings.json`, or automatic Claude hooks.
-- Use sub-agents for implementation only when the user explicitly asks for agents, parallel work, or delegation. Z Skills landing-gate verifiers and adversarial reviewers are workflow-required fresh-check exceptions when Codex sub-agents are available; otherwise run inline, disclose lower assurance, and do not auto-land unless the user accepts it.
+- Use sub-agents only when the user explicitly asks for agents, parallel work, or delegation. For Z Skills landing gates, prefer a fresh independent verification context when it is available without violating the current Codex delegation policy; otherwise run inline, disclose lower assurance, and do not auto-land unless the user accepts it.
 - For isolation, create git worktrees explicitly with normal `git worktree` commands. Do not rely on an `isolation: "worktree"` parameter.
 - Config lookup order is project `.codex/zskills-config.json` first, then project `zskills-config.json`, then legacy `.claude/zskills-config.json` only if already present. Do not create new `.claude` runtime config for Codex.
 - Scheduling is not automatic in Codex. If the user asks for recurring runs, explain the schedule and ask before installing any local cron/system scheduler. For normal turns, perform the requested work now.
@@ -40,7 +40,7 @@ For plan, branch, or worktree verification, include a scope assessment before de
 
 ## Freshness
 
-When this skill is invoked by `run-plan`, `fix-issues`, or another Z Skills landing gate, use a fresh verifier sub-agent whenever Codex sub-agents are available. If unavailable, run inline verification, disclose the lower assurance, and recommend human approval before landing.
+When this skill is invoked by `run-plan`, `fix-issues`, or another Z Skills landing gate, use a fresh independent verifier only when it is available under the current Codex delegation policy. If unavailable, run inline verification, disclose the lower assurance, and recommend human approval before landing.
 
 ## Tracking Markers
 

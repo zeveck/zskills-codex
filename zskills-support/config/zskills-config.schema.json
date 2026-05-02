@@ -193,7 +193,7 @@
     },
     "agents": {
       "type": "object",
-      "description": "Optional Codex sub-agent preferences. Codex does not enforce this with hooks; active skills treat these values as advisory and only use sub-agents when the user explicitly authorizes delegation or fresh verification.",
+      "description": "Optional Codex sub-agent preferences. Codex does not enforce this with hooks; active skills treat these values as advisory and only use sub-agents when allowed by the current Codex delegation policy.",
       "properties": {
         "min_model": {
           "type": "string",

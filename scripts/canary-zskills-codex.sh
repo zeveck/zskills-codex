@@ -3,8 +3,8 @@ set -euo pipefail
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 MODE="${1:---quick}"
-REPORT_DIR="$ROOT/reports"
-REPORT="$REPORT_DIR/canary-zskills-codex.md"
+REPORT_DIR="${ZSKILLS_CANARY_REPORT_DIR:-$ROOT/.zskills/canary-reports}"
+REPORT="${ZSKILLS_CANARY_REPORT:-$REPORT_DIR/canary-zskills-codex.md}"
 CODEX_HOME_CANARY="${ZSKILLS_CANARY_CODEX_HOME:-${CODEX_HOME:-$HOME/.codex}}"
 CANARY_SANDBOX="${ZSKILLS_CANARY_SANDBOX:-danger-full-access}"
 CANARY_MODEL="${ZSKILLS_CANARY_MODEL:-gpt-5.4-mini}"
@@ -18,6 +18,8 @@ Usage:
 
 Runs disposable local canaries for the Codex Z Skills distribution.
 Set ZSKILLS_CANARY_SANDBOX and ZSKILLS_CANARY_MODEL to override runner defaults.
+Set ZSKILLS_CANARY_REPORT or ZSKILLS_CANARY_REPORT_DIR to choose the report path.
+By default reports are written under ignored .zskills/canary-reports.
 EOF
 }
 
@@ -36,6 +38,7 @@ fail() {
 
 start_report() {
   mkdir -p "$REPORT_DIR"
+  mkdir -p "$(dirname "$REPORT")"
   {
     echo "# ZSkills Codex Canary Report"
     echo

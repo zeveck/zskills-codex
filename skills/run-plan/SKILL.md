@@ -13,7 +13,7 @@ These Z Skills are native Codex workflows derived from `github.com/zeveck/zskill
 Use Codex behavior first:
 - Read the current repository before acting. Prefer existing project scripts, config, and conventions over the upstream examples.
 - Never use Claude-only tools or assumptions: no `CronCreate`, `CronList`, `CronDelete`, `Agent`/`Task` tool syntax, `allowed-tools`, `.claude/settings.json`, or automatic Claude hooks.
-- Use sub-agents for implementation only when the user explicitly asks for agents, parallel work, or delegation. Z Skills landing-gate verifiers and adversarial reviewers are workflow-required fresh-check exceptions when Codex sub-agents are available; otherwise run inline, disclose lower assurance, and do not auto-land unless the user accepts it.
+- Use sub-agents only when the user explicitly asks for agents, parallel work, or delegation. For Z Skills landing gates, prefer a fresh independent verification context when it is available without violating the current Codex delegation policy; otherwise run inline, disclose lower assurance, and do not auto-land unless the user accepts it.
 - For isolation, create git worktrees explicitly with normal `git worktree` commands. Do not rely on an `isolation: "worktree"` parameter.
 - Config lookup order is project `.codex/zskills-config.json` first, then project `zskills-config.json`, then legacy `.claude/zskills-config.json` only if already present. Do not create new `.claude` runtime config for Codex.
 - Scheduling is not automatic in Codex. If the user asks for recurring runs, explain the schedule and ask before installing any local cron/system scheduler. For normal turns, perform the requested work now.
@@ -37,7 +37,7 @@ Detailed upstream text is archived in `references/upstream-claude-adapted.md` fo
    - default/cherry-pick: create a manual git worktree under `/tmp/<project>-cp-<plan>-phase-<phase>` on a named branch.
    - `pr`: create a branch/worktree suitable for a PR.
 7. Implement the phase. If the user explicitly requested agents, delegate implementation to a worker with the worktree path; otherwise implement inline.
-8. Verify from actual diffs with a fresh verification context before landing. When Codex sub-agents are available, dispatch a separate verifier for each phase. If sub-agents are unavailable, run inline verification, disclose the lower assurance, and do not auto-land unless the user explicitly accepts inline verification.
+8. Verify from actual diffs with a fresh verification context before landing. Use a separate verifier only when that is available under the current Codex delegation policy; otherwise run inline verification, disclose the lower assurance, and do not auto-land unless the user explicitly accepts inline verification.
 9. Update the plan progress tracker and write or update `reports/plan-<slug>.md`.
 10. Land only after verification passes and the requested mode allows it. Stage explicit files, avoid unrelated changes, and preserve user work.
 11. For `finish`, preserve chunking: execute at most one substantive phase per top-level Codex turn unless the user explicitly says to continue in the same turn after seeing the phase result.
@@ -55,7 +55,7 @@ Detailed upstream text is archived in `references/upstream-claude-adapted.md` fo
 ## Codex-Native Replacements
 
 - Do not use `CronCreate`, `CronList`, or `CronDelete`. For `every`, `next`, or `stop`, explain that Codex has no built-in scheduler and ask before creating an external schedule.
-- Do not use Claude `Agent` prompts or `isolation` parameters. Use Codex sub-agents for implementation only when explicitly authorized; required verifier/reviewer agents follow the runtime exception above.
+- Do not use Claude `Agent` prompts or `isolation` parameters. Use Codex sub-agents only when explicitly authorized by the current Codex delegation policy.
 - Treat upstream hook checks as manual guardrails. Codex does not run Z Skills hooks automatically.
 
 ## External Runner Contract
@@ -95,6 +95,7 @@ Do not run support scripts blindly when a project has different branch names or 
 ## Minimum Report
 
 Every executed phase should report: plan, phase, branch/worktree, files changed, tests run, verification result, landing result, and remaining phases.
+Do not claim that work was committed, cherry-picked, pushed, or fully landed until that git operation has actually succeeded. Before landing, use pending language; after landing, update the report with the real landed state.
 Verification reports used as landing evidence are project artifacts; keep them under `reports/` and land them with the phase report unless the repository has an explicit external-report convention.
 
 ## Tracking And Gates
@@ -120,7 +121,7 @@ Tracking files are ephemeral gates. Do not include `.zskills/`, `.zskills-tracke
 
 - Extract and follow the phase text exactly, but challenge unsafe or impossible instructions.
 - Write/update the phase report before landing.
-- Require a separate verifier per phase when Codex sub-agents are available.
+- Require a separate verifier per phase when it is available under the current Codex delegation policy; otherwise disclose inline verification and reduced assurance.
 - Block auto-landing when verification fails, user sign-off is required, scope changed materially, or unrelated changes are present.
 - Preserve delegate/direct/worktree/PR modes with Codex-native mechanics.
 - Preserve chunking to reduce context fatigue and resource anxiety; do not collapse remaining phases into one mega-phase.

@@ -24,7 +24,7 @@ Build and run a local canary suite that raises confidence in the Codex Z Skills 
 | --- | --- | --- |
 | 1. Build disposable canary harness | ✅ Done | Added `scripts/canary-zskills-codex.sh` with package, installer, scripted-runner, direct-runner, and cherry-pick-runner checks. |
 | 2. Validate package-wide invariants | ✅ Done | `--all` verified 22 skills, frontmatter/reference shape, no `.claude`, no installable `social-seo`, installer preservation, path rewrites, schema, and support script syntax. |
-| 3. Run low-risk skill smoke canaries | ✅ Done | Accounted for every skill in `reports/canary-zskills-codex.md`; static/reference checks cover lower-risk and fixture-dependent skills, with explicit deferred canaries noted. |
+| 3. Run low-risk skill smoke canaries | ✅ Done | Accounted for every skill in the canary report; routine canary reruns now default to ignored `.zskills/canary-reports/canary-zskills-codex.md`, while the historical tracked report remains under `reports/`. Static/reference checks cover lower-risk and fixture-dependent skills, with explicit deferred canaries noted. |
 | 4. Run workflow canaries | ✅ Done | Real direct `finish auto` completed two fresh chunks; real cherry-pick canary landed one scoped commit with canonical tracking markers. |
 | 5. Evaluate gaps and update release readiness | ✅ Done | Report records passed checks and residual gaps: PR/GitHub, block-diagram app fixtures, browser fixture, issue/feedback fixtures, and broad research workflows. |
 

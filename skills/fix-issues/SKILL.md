@@ -12,7 +12,7 @@ These Z Skills are native Codex workflows derived from `github.com/zeveck/zskill
 Use Codex behavior first:
 - Read the current repository before acting. Prefer existing project scripts, config, and conventions over the upstream examples.
 - Never use Claude-only tools or assumptions: no `CronCreate`, `CronList`, `CronDelete`, `Agent`/`Task` tool syntax, `allowed-tools`, `.claude/settings.json`, or automatic Claude hooks.
-- Use sub-agents for implementation only when the user explicitly asks for agents, parallel work, or delegation. Z Skills landing-gate verifiers and adversarial reviewers are workflow-required fresh-check exceptions when Codex sub-agents are available; otherwise run inline, disclose lower assurance, and do not auto-land unless the user accepts it.
+- Use sub-agents only when the user explicitly asks for agents, parallel work, or delegation. For Z Skills landing gates, prefer a fresh independent verification context when it is available without violating the current Codex delegation policy; otherwise run inline, disclose lower assurance, and do not auto-land unless the user accepts it.
 - For isolation, create git worktrees explicitly with normal `git worktree` commands. Do not rely on an `isolation: "worktree"` parameter.
 - Config lookup order is project `.codex/zskills-config.json` first, then project `zskills-config.json`, then legacy `.claude/zskills-config.json` only if already present. Do not create new `.claude` runtime config for Codex.
 - Scheduling is not automatic in Codex. If the user asks for recurring runs, explain the schedule and ask before installing any local cron/system scheduler. For normal turns, perform the requested work now.
@@ -31,7 +31,7 @@ Detailed upstream text is archived in `references/upstream-claude-adapted.md` fo
 3. Prioritize by severity, reproducibility, dependency order, and requested focus.
 4. For each selected issue, reproduce or prove the bug before editing. Skip issues that are too vague, too large, or blocked; document why.
 5. Fix in sprint-safe batches. For sprint mode, use isolated worktrees for cherry-pick or PR landing unless `direct` was explicitly selected and allowed. Keep one issue or tightly grouped root cause per commit.
-6. Verify each fix with targeted tests and, when Codex sub-agents are available, a fresh verifier for the issue or batch before landing.
+6. Verify each fix with targeted tests and, when allowed by the current Codex delegation policy, a fresh verifier for the issue or batch before landing. Otherwise run inline verification and disclose the lower assurance.
 7. Append `SPRINT_REPORT.md` before landing. Sprint mode does not close GitHub issues, finalize tracker state, or remove worktrees; `fix-report` owns those decisions.
 
 ## Landing Modes

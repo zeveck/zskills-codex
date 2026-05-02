@@ -11,7 +11,7 @@ Codex runtime policy:
 - Project `.codex/zskills-config.json` is the normal Codex runtime config and
   should be created by new installs. Legacy fallbacks exist only for older
   repos and compatibility checks.
-- Use explicit git worktrees. Implementation delegation needs explicit user authorization; workflow-required verifier/reviewer sub-agents are allowed when available and must be disclosed when replaced by inline review.
+- Use explicit git worktrees. Implementation delegation needs explicit user authorization; verifier/reviewer sub-agents may be used only when allowed by the current Codex delegation policy. If they are unavailable or not authorized, run inline review, disclose the reduced assurance, and do not present it as fresh sub-agent verification.
 - Use `/home/vscode/.codex/zskills-support/config/zskills-config.schema.json` as the shared config schema. Active workflows should honor `testing.*`, `dev_server.*`, `ui.file_patterns`, and `ci.*` in addition to `execution.*`; `agents.min_model` is advisory only.
 
 Shared landing contract:

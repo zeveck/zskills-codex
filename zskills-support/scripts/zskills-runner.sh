@@ -862,6 +862,7 @@ External ZSkills runner contract for this chunk:
 - If resolved landing mode is direct, finalize source changes, plan tracker updates, and the report, then commit the scoped files directly on the current branch before exiting. Leave no dirty project artifacts except ignored .zskills tracking/log state.
 - If resolved landing mode is cherry-pick, create/use a manual git worktree, finalize source changes, plan tracker updates, and the report there, commit the worktree change, then cherry-pick that scoped commit to $BASE_BRANCH in the main repo. Do not commit phase source changes directly in the main repo for cherry-pick mode.
 - If resolved landing mode is pr, finalize source changes, plan tracker updates, and the report in a feature worktree/branch before pushing/creating the PR. Do not push directly to the base branch.
+- Do not claim in the report that work was committed, cherry-picked, pushed, or fully landed until that git operation has actually succeeded. Before landing, use pending language; after landing, update the report with the real landed state.
 - After landing or PR preparation, ensure the main repository has the plan/report updates and canonical markers before exiting.
 - Do not commit .zskills tracking files.
 EOF
