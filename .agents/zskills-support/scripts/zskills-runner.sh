@@ -834,6 +834,7 @@ run_one_chunk() {
   report=$(report_path "$REPO_ROOT" "$PLAN_REPORT_SLUG")
   plan_path=$(resolve_plan_path "$REPO_ROOT" "$PLAN")
 
+  mkdir -p "$tracking"
   collect_state_file "$before_file"
   child_prompt=$(cat <<EOF
 run-plan $PLAN finish auto

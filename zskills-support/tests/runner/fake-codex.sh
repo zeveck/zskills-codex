@@ -73,6 +73,10 @@ write_progress() {
   report=$(contract_report_path)
   tracking=$(contract_tracking_dir)
   tracking_id=$(marker_id "phase-1")
+  if [ "${FAKE_CODEX_REQUIRE_TRACKING_DIR:-0}" = "1" ] && [ ! -d "$tracking" ]; then
+    echo "fake-codex: tracking dir missing before child chunk: $tracking" >&2
+    exit 24
+  fi
   mkdir -p "$(dirname "$report")" "$tracking"
   if [ "$report_mode" = "normal" ]; then
     cat > "$report" <<'MD'

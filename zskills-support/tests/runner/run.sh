@@ -446,7 +446,7 @@ test_fake_success() {
   local repo run_dir summary expected_tracking_id
   repo=$(make_repo)
   expected_tracking_id=$(runner_tracking_id "$repo" phase-1)
-  CODEX_BIN="$FAKE_CODEX" FAKE_CODEX_MODE=progress "$SCRIPT" run-plan plans/example.md finish auto --repo "$repo" >"$outdir"/zskills-runner-fake-success.out
+  CODEX_BIN="$FAKE_CODEX" FAKE_CODEX_MODE=progress FAKE_CODEX_REQUIRE_TRACKING_DIR=1 "$SCRIPT" run-plan plans/example.md finish auto --repo "$repo" >"$outdir"/zskills-runner-fake-success.out
   run_dir=$(latest_run_dir "$repo")
   summary="$run_dir/chunk-001.summary.json"
   [ -f "$run_dir/chunk-001.events.jsonl" ]
