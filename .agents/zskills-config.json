@@ -1,0 +1,19 @@
+{
+  "execution": {
+    "landing": "cherry-pick",
+    "base_branch": "main",
+    "remote": "origin",
+    "main_protected": false,
+    "branch_prefix": "zskills/"
+  },
+  "runner": {
+    "max_chunks": 10,
+    "chunk_timeout_minutes": 90,
+    "idle_timeout_minutes": 15,
+    "log_dir": ".zskills/logs",
+    "stop_marker": ".zskills/stop",
+    "sandbox": "workspace-write",
+    "approval_policy": "never",
+    "allow_direct_unattended": false
+  }
+}

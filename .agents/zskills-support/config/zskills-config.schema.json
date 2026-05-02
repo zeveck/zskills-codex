@@ -1,0 +1,207 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "zskills Configuration",
+  "description": "Configuration for zskills agent skill system. Controls execution modes, testing, CI, and UI verification.",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Path to this schema file (for VS Code validation)."
+    },
+    "project_name": {
+      "type": "string",
+      "description": "Human-readable project name. Used in PR titles and reports."
+    },
+    "timezone": {
+      "type": "string",
+      "description": "IANA timezone for timestamps in reports and markers. Example: America/New_York",
+      "default": "America/New_York"
+    },
+    "execution": {
+      "type": "object",
+      "description": "Controls how agent work reaches main.",
+      "properties": {
+        "landing": {
+          "type": "string",
+          "enum": ["cherry-pick", "pr", "direct"],
+          "default": "cherry-pick",
+          "description": "Default landing mode. cherry-pick: work in worktree, cherry-pick to main. pr: work in named worktree, push branch, create PR. direct: work on main, no landing step."
+        },
+        "base_branch": {
+          "type": "string",
+          "default": "main",
+          "description": "Primary branch that receives direct or cherry-pick landings and is used as the PR base."
+        },
+        "remote": {
+          "type": "string",
+          "default": "origin",
+          "description": "Git remote used for fetch, push, PR branches, and base freshness checks."
+        },
+        "main_protected": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, agents cannot commit, cherry-pick, or push to main. Forces PR or feature branch workflow."
+        },
+        "branch_prefix": {
+          "type": "string",
+          "default": "feat/",
+          "description": "Prefix for branch names in PR mode. Examples: 'feat/', 'agent/', '' (empty = no prefix)."
+        }
+      }
+    },
+    "testing": {
+      "type": "object",
+      "description": "Test commands and patterns.",
+      "properties": {
+        "unit_cmd": {
+          "type": "string",
+          "description": "Command to run unit tests. Example: npm run test"
+        },
+        "full_cmd": {
+          "type": "string",
+          "description": "Command to run all tests (unit + integration + E2E). Example: npm run test:all"
+        },
+        "output_file": {
+          "type": "string",
+          "default": ".test-results.txt",
+          "description": "File where test output is captured."
+        },
+        "file_patterns": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Glob patterns for test files. Example: ['tests/**/*.test.js']"
+        }
+      }
+    },
+    "dev_server": {
+      "type": "object",
+      "description": "Development server configuration for manual testing.",
+      "properties": {
+        "cmd": {
+          "type": "string",
+          "description": "Command to start the dev server. Example: npm start"
+        },
+        "port_script": {
+          "type": "string",
+          "description": "Script that outputs the dev server port. Example: scripts/port.sh"
+        },
+        "main_repo_path": {
+          "type": "string",
+          "description": "Absolute path to the main repo. Used by worktree agents to find the dev server."
+        }
+      }
+    },
+    "ui": {
+      "type": "object",
+      "description": "UI verification configuration.",
+      "properties": {
+        "file_patterns": {
+          "type": "string",
+          "description": "Regex pattern matching UI files. When these files change, manual verification is required. Example: src/(components|ui)/.*\\.tsx?$"
+        },
+        "auth_bypass": {
+          "type": "string",
+          "description": "JavaScript to execute for auth bypass during manual testing. Example: localStorage.setItem('token', 'test')"
+        }
+      }
+    },
+    "ci": {
+      "type": "object",
+      "description": "CI integration for PR mode. Controls whether the agent polls CI checks and attempts to fix failures.",
+      "properties": {
+        "auto_fix": {
+          "type": "boolean",
+          "default": true,
+          "description": "When true, poll CI checks after PR creation and attempt to fix failures. When false, create PR and report URL without waiting. Set to false for slow CI (30+ min) or repos without CI."
+        },
+        "max_fix_attempts": {
+          "type": "integer",
+          "default": 2,
+          "minimum": 0,
+          "maximum": 5,
+          "description": "Maximum fix-and-push cycles when CI fails. 0 = poll and report only (no fix attempts). Each attempt comments on the PR with failure context."
+        }
+      }
+    },
+    "runner": {
+      "type": "object",
+      "description": "External Codex runner settings for chunked finish-auto re-entry. The runner starts fresh codex exec processes and validates durable state between chunks.",
+      "properties": {
+        "max_chunks": {
+          "type": "integer",
+          "default": 10,
+          "minimum": 1,
+          "maximum": 100,
+          "description": "Maximum number of fresh Codex chunks the external runner may launch before stopping."
+        },
+        "chunk_timeout_minutes": {
+          "type": "integer",
+          "default": 90,
+          "minimum": 1,
+          "description": "Maximum wall-clock minutes allowed for one codex exec chunk."
+        },
+        "idle_timeout_minutes": {
+          "type": "integer",
+          "default": 15,
+          "minimum": 1,
+          "description": "Maximum minutes without runner-observed output or state change before a chunk is considered stalled."
+        },
+        "log_dir": {
+          "type": "string",
+          "default": ".zskills/logs",
+          "description": "Directory where runner JSONL events, chunk summaries, and last-message files are written."
+        },
+        "stop_marker": {
+          "type": "string",
+          "default": ".zskills/stop",
+          "description": "Marker file path that stops the external runner before launching another chunk."
+        },
+        "require_handoff": {
+          "type": "boolean",
+          "default": true,
+          "description": "When true, require a handoff.run-plan marker between chunks unless the plan is complete."
+        },
+        "require_progress_hash_change": {
+          "type": "boolean",
+          "default": true,
+          "description": "When true, block continuation if plan/report/tracking state did not change after a chunk."
+        },
+        "sandbox": {
+          "type": "string",
+          "enum": ["read-only", "workspace-write", "danger-full-access"],
+          "default": "workspace-write",
+          "description": "Sandbox mode passed to child codex exec invocations. danger-full-access should only be used inside an external disposable sandbox."
+        },
+        "approval_policy": {
+          "type": "string",
+          "enum": ["never", "on-request", "untrusted"],
+          "default": "never",
+          "description": "Approval policy passed to non-interactive child codex exec invocations."
+        },
+        "allow_direct_unattended": {
+          "type": "boolean",
+          "default": false,
+          "description": "When false, the external runner refuses unattended direct-mode execution."
+        },
+        "pr_max_rechecks": {
+          "type": "integer",
+          "default": 0,
+          "minimum": 0,
+          "description": "Maximum PR/CI recheck chunks before stopping for human attention. 0 means do not poll PR state automatically."
+        }
+      }
+    },
+    "agents": {
+      "type": "object",
+      "description": "Optional Codex sub-agent preferences. Codex does not enforce this with hooks; active skills treat these values as advisory and only use sub-agents when allowed by the current Codex delegation policy.",
+      "properties": {
+        "min_model": {
+          "type": "string",
+          "default": "auto",
+          "description": "Advisory minimum model preference for Codex sub-agents. Use 'auto' or 'inherit' to prefer the current session model. Literal Codex model ids may be used when the runtime supports explicit model selection. This field is not hook-enforced in Codex and must not be treated as a safety boundary.",
+          "examples": ["auto", "inherit", "gpt-5.5", "gpt-5.4"]
+        }
+      }
+    }
+  }
+}

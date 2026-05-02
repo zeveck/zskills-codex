@@ -56,6 +56,10 @@ Codex's documented repository skill discovery scans `.agents/skills` from the
 current working directory up to the repository root, so this is the active
 repo-local skill location rather than a staging directory.
 
+This repository also checks in the generated `.agents/` install tree so a fresh
+clone is immediately discoverable by Codex. Re-run `bash scripts/install.sh`
+after changing source `skills/` or `zskills-support/` files.
+
 Use `--project <path>` to install into a different repo. Existing
 `.agents/zskills-config.json` files are preserved.
 
