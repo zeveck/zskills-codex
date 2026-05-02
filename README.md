@@ -60,6 +60,11 @@ This repository also checks in the generated `.agents/` install tree so a fresh
 clone is immediately discoverable by Codex. Re-run `bash scripts/install.sh`
 after changing source `skills/` or `zskills-support/` files.
 
+To update an existing project install later, invoke the `update-zskills` skill
+from that project. It refreshes the repo-local `.agents/` tree from
+`github.com/zeveck/zskills-codex` and reports whether the project should commit
+the refreshed install.
+
 Use `--project <path>` to install into a different repo. Existing
 `.agents/zskills-config.json` files are preserved.
 
