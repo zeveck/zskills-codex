@@ -36,6 +36,7 @@ BRANCH_NAME=""
 LANDED_STATUS=""
 PLAN_SLUG=""
 PLAN_FILE=""
+REPORT_PATH=""
 BASE_BRANCH="main"
 REMOTE="origin"
 
@@ -46,6 +47,7 @@ while [ $# -gt 0 ]; do
     --landed-status) LANDED_STATUS="$2"; shift 2 ;;
     --plan-slug)     PLAN_SLUG="$2"; shift 2 ;;
     --plan-file)     PLAN_FILE="$2"; shift 2 ;;
+    --report)        REPORT_PATH="$2"; shift 2 ;;
     --base-branch)   BASE_BRANCH="$2"; shift 2 ;;
     --remote)        REMOTE="$2"; shift 2 ;;
     *)               echo "ERROR: unknown arg '$1'" >&2; exit 2 ;;
@@ -103,8 +105,10 @@ if [ -n "$BRANCH_NAME" ] && [ "$LANDED_STATUS" = "landed" ]; then
 fi
 
 # 5. Plan report exists
-if [ -n "$PLAN_SLUG" ]; then
+if [ -z "$REPORT_PATH" ] && [ -n "$PLAN_SLUG" ]; then
   REPORT_PATH="$MAIN_ROOT/reports/plan-${PLAN_SLUG}.md"
+fi
+if [ -n "$REPORT_PATH" ]; then
   if [ ! -f "$REPORT_PATH" ]; then
     echo "INVARIANT-FAIL (#5): plan report missing at $REPORT_PATH — Phase 5 didn't run or wrote elsewhere" >&2
     INVARIANT_FAILED=1

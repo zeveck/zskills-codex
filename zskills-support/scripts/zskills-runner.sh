@@ -94,8 +94,8 @@ resolve_plan_path() {
 }
 
 report_path() {
-  local repo="$1" slug="$2"
-  printf '%s/reports/plan-%s.md\n' "$repo" "$slug"
+  local repo="$1" report_slug="$2"
+  printf '%s/reports/plan-%s.md\n' "$repo" "$report_slug"
 }
 
 tracking_dir() {
@@ -312,7 +312,7 @@ run_pre_continue_gate() {
     --tracking-id "$tracking_id" \
     --plan-slug "$PLAN_SLUG" \
     --plan-file "$(resolve_plan_path "$REPO_ROOT" "$PLAN")" \
-    --report "$(report_path "$REPO_ROOT" "$PLAN_SLUG")" >"$gate_out" 2>&1
+    --report "$(report_path "$REPO_ROOT" "$PLAN_REPORT_SLUG")" >"$gate_out" 2>&1
 }
 
 run_post_run_invariants_if_available() {
@@ -330,6 +330,7 @@ run_post_run_invariants_if_available() {
       --branch "" \
       --landed-status landed \
       --plan-slug "$PLAN_SLUG" \
+      --report "$(report_path "$REPO_ROOT" "$PLAN_REPORT_SLUG")" \
       --plan-file "$(resolve_plan_path "$REPO_ROOT" "$PLAN")" \
       --base-branch "$BASE_BRANCH" \
       --remote "$REMOTE"
@@ -380,7 +381,7 @@ validate_chunk_progress() {
 
   gate_out="$run_dir/$chunk_label.gate.txt"
   invariant_out="$run_dir/$chunk_label.post-run-invariants.txt"
-  report=$(report_path "$REPO_ROOT" "$PLAN_SLUG")
+  report=$(report_path "$REPO_ROOT" "$PLAN_REPORT_SLUG")
   tracking=$(tracking_dir "$REPO_ROOT" "$PIPELINE_ID")
   complete=false
   plan_is_complete "$after_file" && complete=true
@@ -506,6 +507,25 @@ PY
   printf '%s-%s\n' "$slug" "$digest"
 }
 
+plan_report_slug() {
+  local plan="$1"
+  python3 - "$REPO_ROOT" "$plan" <<'PY'
+import os
+import re
+import sys
+
+repo, plan = sys.argv[1:3]
+path = plan if os.path.isabs(plan) else os.path.join(repo, plan)
+rel = os.path.relpath(os.path.normpath(path), os.path.normpath(repo))
+parts = rel.split(os.sep)
+if len(parts) > 1 and parts[0] == "plans":
+    rel = os.path.join(*parts[1:])
+base, _ = os.path.splitext(rel)
+slug = re.sub(r"[^A-Za-z0-9._-]+", "-", base).strip("-")
+print(slug[:128] or "plan")
+PY
+}
+
 git_repo_root() {
   local repo="$1"
   git -C "$repo" rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 1
@@ -527,7 +547,7 @@ contains_dangerous_arg() {
 print_resolved() {
   local plan_path report tracking
   plan_path=$(resolve_plan_path "$REPO_ROOT" "$PLAN")
-  report=$(report_path "$REPO_ROOT" "$PLAN_SLUG")
+  report=$(report_path "$REPO_ROOT" "$PLAN_REPORT_SLUG")
   tracking=$(tracking_dir "$REPO_ROOT" "$PIPELINE_ID")
   cat <<EOF
 mode=$MODE
@@ -535,6 +555,7 @@ repo=$REPO_ROOT
 plan=$PLAN
 plan_path=$plan_path
 plan_slug=$PLAN_SLUG
+plan_report_slug=$PLAN_REPORT_SLUG
 plan_key=$PLAN_KEY
 pipeline_id=$PIPELINE_ID
 tracking_dir=$tracking
@@ -563,7 +584,7 @@ write_initial_state() {
   local state_dir plan_path report tracking state_file tmp repo_key
   state_dir="${ZSKILLS_RUNNER_STATE_DIR:-/tmp/zskills-runner-state}"
   plan_path=$(resolve_plan_path "$REPO_ROOT" "$PLAN")
-  report=$(report_path "$REPO_ROOT" "$PLAN_SLUG")
+  report=$(report_path "$REPO_ROOT" "$PLAN_REPORT_SLUG")
   tracking=$(tracking_dir "$REPO_ROOT" "$PIPELINE_ID")
   repo_key=$(printf '%s' "$REPO_ROOT" | sha256sum | awk '{print substr($1, 1, 12)}')
   mkdir -p "$state_dir"
@@ -808,7 +829,7 @@ run_one_chunk() {
   start_time=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   chunk_tracking_id=$(date -u +%Y%m%dT%H%M%SZ)
   tracking=$(tracking_dir "$REPO_ROOT" "$PIPELINE_ID")
-  report=$(report_path "$REPO_ROOT" "$PLAN_SLUG")
+  report=$(report_path "$REPO_ROOT" "$PLAN_REPORT_SLUG")
   plan_path=$(resolve_plan_path "$REPO_ROOT" "$PLAN")
 
   collect_state_file "$before_file"
@@ -990,6 +1011,7 @@ fi
 CONFIG_FILE=$(find_config "$REPO_ROOT")
 PLAN_SLUG=$(plan_slug "$PLAN")
 PLAN_KEY=$(plan_key "$PLAN")
+PLAN_REPORT_SLUG=$(plan_report_slug "$PLAN")
 PIPELINE_ID="run-plan.$PLAN_KEY"
 
 [ -n "$MAX_CHUNKS" ] || MAX_CHUNKS=$(json_get "$CONFIG_FILE" "runner.max_chunks" "10")

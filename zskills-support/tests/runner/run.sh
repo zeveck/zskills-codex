@@ -185,8 +185,10 @@ test_same_basename_disambiguates() {
   case "$key_b" in task-*) ;; *) echo "unexpected key: $key_b" >&2; exit 1 ;; esac
   [ "$key_a" != "$key_b" ] || { echo "same basename plans produced identical keys: $key_a" >&2; exit 1; }
   [ "$pipeline_a" != "$pipeline_b" ] || { echo "same basename plans produced identical pipeline ids: $pipeline_a" >&2; exit 1; }
-  grep -q "/reports/plan-task.md" "$out_a"
-  grep -q "/reports/plan-task.md" "$out_b"
+  grep -q "/reports/plan-alpha-task.md" "$out_a"
+  grep -q "/reports/plan-beta-task.md" "$out_b"
+  ! grep -q "/reports/plan-beta-task.md" "$out_a"
+  ! grep -q "/reports/plan-alpha-task.md" "$out_b"
   grep -q "/.zskills/tracking/$pipeline_a" "$out_a"
   grep -q "/.zskills/tracking/$pipeline_b" "$out_b"
   rm -f "$out_a" "$out_b"
