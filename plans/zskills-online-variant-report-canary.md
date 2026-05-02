@@ -38,7 +38,7 @@ The only expected project changes are under:
 | Phase | Status | Notes |
 | --- | --- | --- |
 | 1. Build research harness and source ledger | ✅ Done | Created the output directory, manifest, verification script, and source ledger structure for online GitHub evidence. |
-| 2. Collect current repository evidence | ⬜ Not Started | Research all four `github.com/zeveck` repositories and record source-backed facts, gaps, dates, and revision identifiers when available. |
+| 2. Collect current repository evidence | ✅ Done | Recorded fresh GitHub and local implementation evidence, source URLs, access gaps, dates, branches, tags, commits, directories, config, hooks, tests, and reports. |
 | 3. Produce comparative analysis | ⬜ Not Started | Build a rigorous comparison of purpose, audience, runtime model, install/config model, skills, support assets, tests, release posture, and risks. |
 | 4. Analyze dev-to-cc/codex implications | ⬜ Not Started | Evaluate how `zskills-dev` changes should flow to `zskills-cc` and this `zskills-codex` implementation, including direct import, adaptation, rejection, and deferral guidance. |
 | 5. Write final report and verify quality | ⬜ Not Started | Produce `reports/zskills-variant-research-report.md`, update the manifest, and run automated quality checks. |
