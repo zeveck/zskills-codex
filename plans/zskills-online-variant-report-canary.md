@@ -40,7 +40,7 @@ The only expected project changes are under:
 | 1. Build research harness and source ledger | ✅ Done | Created the output directory, manifest, verification script, and source ledger structure for online GitHub evidence. |
 | 2. Collect current repository evidence | ✅ Done | Recorded fresh GitHub and local implementation evidence, source URLs, access gaps, dates, branches, tags, commits, directories, config, hooks, tests, and reports. |
 | 3. Produce comparative analysis | ✅ Done | Created the comparative analysis covering roles, runtime/client models, installation/configuration, automation, tests, release posture, strategic differences, risks, and open questions. |
-| 4. Analyze dev-to-cc/codex implications | ⬜ Not Started | Evaluate how `zskills-dev` changes should flow to `zskills-cc` and this `zskills-codex` implementation, including direct import, adaptation, rejection, and deferral guidance. |
+| 4. Analyze dev-to-cc/codex implications | ✅ Done | Created dev-to-cc/codex implication guidance with change-surface classification, import/adapt/reject/defer decision matrices, verification commands, release recommendations, and risk notes. |
 | 5. Write final report and verify quality | ⬜ Not Started | Produce `reports/zskills-variant-research-report.md`, update the manifest, and run automated quality checks. |
 
 ## Phase Details
