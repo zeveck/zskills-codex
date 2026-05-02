@@ -1,2 +1,3 @@
 phase-1-source-ledger.md
 phase-2-current-evidence.md
+phase-3-comparative-analysis.md
