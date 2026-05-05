@@ -245,18 +245,22 @@ plan_is_complete() {
 }
 
 dirty_project_artifacts() {
-  local status path
-  status=$(git -C "$REPO_ROOT" status --short --untracked-files=all)
-  [ -z "$status" ] && return 0
-  while IFS= read -r line; do
-    path=${line#???}
-    case "$path" in
-      .zskills/*|.zskills-tracked) ;;
-      *) printf '%s\n' "$line"; return 1 ;;
-    esac
-  done <<EOF
+  local root status path
+  for root in "$REPO_ROOT" "$(active_artifact_root)"; do
+    [ -n "$root" ] || continue
+    [ -d "$root" ] || continue
+    status=$(git -C "$root" status --short --untracked-files=all)
+    [ -z "$status" ] && continue
+    while IFS= read -r line; do
+      path=${line#???}
+      case "$path" in
+        .zskills/*|.zskills-tracked) ;;
+        *) printf '%s: %s\n' "$root" "$line"; return 1 ;;
+      esac
+    done <<EOF
 $status
 EOF
+  done
   return 0
 }
 
@@ -305,14 +309,16 @@ validate_marker_evidence() {
 
 run_pre_continue_gate() {
   local tracking_id="$1" gate_out="$2" mode="${3:-pre-continue}"
+  local artifact_root
+  artifact_root=$(active_artifact_root)
   "$SUPPORT_DIR/scripts/zskills-gate.sh" \
     --repo "$REPO_ROOT" \
     --mode "$mode" \
     --pipeline "$PIPELINE_ID" \
     --tracking-id "$tracking_id" \
     --plan-slug "$PLAN_SLUG" \
-    --plan-file "$(resolve_plan_path "$REPO_ROOT" "$PLAN")" \
-    --report "$(report_path "$REPO_ROOT" "$PLAN_REPORT_SLUG")" >"$gate_out" 2>&1
+    --plan-file "$(resolve_plan_path "$artifact_root" "$PLAN")" \
+    --report "$(report_path "$artifact_root" "$PLAN_REPORT_SLUG")" >"$gate_out" 2>&1
 }
 
 run_post_run_invariants_if_available() {
@@ -335,6 +341,30 @@ run_post_run_invariants_if_available() {
       --base-branch "$BASE_BRANCH" \
       --remote "$REMOTE"
   ) >"$invariant_out" 2>&1
+}
+
+shared_worktree_path() {
+  local project
+  project=$(basename "$REPO_ROOT")
+  printf '/tmp/%s-run-plan-%s\n' "$project" "$PLAN_KEY"
+}
+
+shared_worktree_branch() {
+  printf '%s%s\n' "$BRANCH_PREFIX" "run-plan/$PLAN_KEY"
+}
+
+active_artifact_root() {
+  local wt
+  wt=$(shared_worktree_path)
+  case "$EXECUTION_LANDING" in
+    cherry-pick|pr)
+      if [ -d "$wt" ] && git -C "$wt" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        printf '%s\n' "$wt"
+        return 0
+      fi
+      ;;
+  esac
+  printf '%s\n' "$REPO_ROOT"
 }
 
 runner_stop_reason() {
@@ -381,7 +411,7 @@ validate_chunk_progress() {
 
   gate_out="$run_dir/$chunk_label.gate.txt"
   invariant_out="$run_dir/$chunk_label.post-run-invariants.txt"
-  report=$(report_path "$REPO_ROOT" "$PLAN_REPORT_SLUG")
+  report=$(report_path "$(active_artifact_root)" "$PLAN_REPORT_SLUG")
   tracking=$(tracking_dir "$REPO_ROOT" "$PIPELINE_ID")
   complete=false
   plan_is_complete "$after_file" && complete=true
@@ -547,13 +577,17 @@ contains_dangerous_arg() {
 }
 
 print_resolved() {
-  local plan_path report tracking
-  plan_path=$(resolve_plan_path "$REPO_ROOT" "$PLAN")
-  report=$(report_path "$REPO_ROOT" "$PLAN_REPORT_SLUG")
+  local artifact_root plan_path report tracking shared_wt shared_branch
+  artifact_root=$(active_artifact_root)
+  plan_path=$(resolve_plan_path "$artifact_root" "$PLAN")
+  report=$(report_path "$artifact_root" "$PLAN_REPORT_SLUG")
   tracking=$(tracking_dir "$REPO_ROOT" "$PIPELINE_ID")
+  shared_wt=$(shared_worktree_path)
+  shared_branch=$(shared_worktree_branch)
   cat <<EOF
 mode=$MODE
 repo=$REPO_ROOT
+artifact_root=$artifact_root
 plan=$PLAN
 plan_path=$plan_path
 plan_slug=$PLAN_SLUG
@@ -573,6 +607,8 @@ stop_marker=$STOP_MARKER
 sandbox=$SANDBOX
 approval_policy=$APPROVAL_POLICY
 execution_landing=$EXECUTION_LANDING
+shared_worktree_path=$shared_wt
+shared_worktree_branch=$shared_branch
 allow_direct_unattended=$ALLOW_DIRECT_UNATTENDED
 codex_bin=$CODEX_BIN
 codex_argv=${CODEX_ARGV[*]}
@@ -817,7 +853,7 @@ PY
 
 run_one_chunk() {
   local run_dir="$1" chunk_number="$2"
-  local chunk_label chunk_prefix events_file stdout_file last_message summary_file before_file after_file argv_file version start_time end_time exit_code stop_reason timeout_seconds idle_seconds child_prompt chunk_tracking_id tracking report plan_path
+  local chunk_label chunk_prefix events_file stdout_file last_message summary_file before_file after_file argv_file version start_time end_time exit_code stop_reason timeout_seconds idle_seconds child_prompt chunk_tracking_id tracking report plan_path shared_wt shared_branch shared_plan_path shared_report
   chunk_label=$(printf 'chunk-%03d' "$chunk_number")
   chunk_prefix="$run_dir/$chunk_label"
   events_file="$chunk_prefix.events.jsonl"
@@ -833,13 +869,17 @@ run_one_chunk() {
   tracking=$(tracking_dir "$REPO_ROOT" "$PIPELINE_ID")
   report=$(report_path "$REPO_ROOT" "$PLAN_REPORT_SLUG")
   plan_path=$(resolve_plan_path "$REPO_ROOT" "$PLAN")
+  shared_wt=$(shared_worktree_path)
+  shared_branch=$(shared_worktree_branch)
+  shared_plan_path=$(resolve_plan_path "$shared_wt" "$PLAN")
+  shared_report=$(report_path "$shared_wt" "$PLAN_REPORT_SLUG")
 
   mkdir -p "$tracking"
   collect_state_file "$before_file"
   child_prompt=$(cat <<EOF
 run-plan $PLAN finish auto
 
-RUNNER-MANAGED CHUNK: You are running under zskills-runner.sh. Do not invoke zskills-runner.sh again. Execute exactly one incomplete phase, then stop after writing the required report, tracking markers, and landing evidence.
+RUNNER-MANAGED CHUNK: You are running under zskills-runner.sh. Do not invoke zskills-runner.sh again. Execute exactly one incomplete phase, then stop after writing the required report, tracking markers, and landing evidence appropriate for this chunk.
 
 External ZSkills runner contract for this chunk:
 - Execute exactly one incomplete phase from $PLAN, then stop.
@@ -850,6 +890,10 @@ External ZSkills runner contract for this chunk:
 - Resolved landing mode: $EXECUTION_LANDING. You must use this mode for this chunk.
 - Execution base branch: $BASE_BRANCH
 - Execution remote: $REMOTE
+- Shared finish-auto worktree path: $shared_wt
+- Shared finish-auto branch: $shared_branch
+- Shared finish-auto plan path: $shared_plan_path
+- Shared finish-auto report path: $shared_report
 - Canonical tracking directory: $tracking
 - Tracking id: if $tracking contains a handoff.run-plan.* marker, reuse the newest marker suffix; otherwise use $chunk_tracking_id.
 - Write canonical marker files directly in the canonical tracking directory, with no timestamp or phase subdirectories, even if implementation happens in a git worktree:
@@ -865,10 +909,10 @@ External ZSkills runner contract for this chunk:
 - The report must include a "## Phase" heading, a "Status:" line, tests run, verification result, landing result, remaining phases, and a scope assessment.
 - Mark completed progress tracker rows with exactly "✅ Done" so runner status parsing stays stable.
 - If resolved landing mode is direct, finalize source changes, plan tracker updates, and the report, then commit the scoped files directly on the current branch before exiting. Leave no dirty project artifacts except ignored .zskills tracking/log state.
-- If resolved landing mode is cherry-pick, create/use a manual git worktree, finalize source changes, plan tracker updates, and the report there, commit the worktree change, then cherry-pick that scoped commit to $BASE_BRANCH in the main repo. Do not commit phase source changes directly in the main repo for cherry-pick mode.
-- If resolved landing mode is pr, finalize source changes, plan tracker updates, and the report in a feature worktree/branch before pushing/creating the PR. Do not push directly to the base branch.
+- If resolved landing mode is cherry-pick, create/use the shared finish-auto worktree and branch above. Finalize source changes, plan tracker updates, and the report in that shared worktree, then commit the chunk there. If another phase remains, do not cherry-pick or land to $BASE_BRANCH yet; leave a handoff marker and keep the shared worktree clean for the next chunk. If the plan is complete, run final cross-phase verification, then land the accumulated shared-worktree commits to $BASE_BRANCH in the main repo and write final land/fulfilled markers.
+- If resolved landing mode is pr, create/use the shared finish-auto worktree and branch above. Finalize source changes, plan tracker updates, and the report in that shared worktree, then commit the chunk there. Push/create or update the PR only when the plan is complete unless the user explicitly asked for earlier PR updates. Do not push directly to the base branch.
 - Do not claim in the report that work was committed, cherry-picked, pushed, or fully landed until that git operation has actually succeeded. Before landing, use pending language; after landing, update the report with the real landed state.
-- After landing or PR preparation, ensure the main repository has the plan/report updates and canonical markers before exiting.
+- For non-final chunks, the durable plan/report state is expected in the shared finish-auto worktree, not the main repository. For final chunks, ensure the main repository has the landed plan/report updates and canonical markers before exiting.
 - Do not commit .zskills tracking files.
 EOF
 )
@@ -1031,6 +1075,7 @@ PIPELINE_ID="run-plan.$PLAN_KEY"
 [ -n "$ALLOW_DIRECT_UNATTENDED" ] || ALLOW_DIRECT_UNATTENDED=$(json_get "$CONFIG_FILE" "runner.allow_direct_unattended" "false")
 [ -n "$BASE_BRANCH" ] || BASE_BRANCH=$(json_get "$CONFIG_FILE" "execution.base_branch" "main")
 [ -n "$REMOTE" ] || REMOTE=$(json_get "$CONFIG_FILE" "execution.remote" "origin")
+[ -n "${BRANCH_PREFIX:-}" ] || BRANCH_PREFIX=$(json_get "$CONFIG_FILE" "execution.branch_prefix" "run-plan/")
 
 case "$SANDBOX" in
   read-only|workspace-write|danger-full-access) ;;

@@ -498,7 +498,9 @@ assert "Resolved landing mode: cherry-pick" in prompt
 assert "RUNNER-MANAGED CHUNK" in prompt
 assert "Do not invoke zskills-runner.sh again" in prompt
 assert "You must use this mode" in prompt
-assert "Do not commit phase source changes directly in the main repo for cherry-pick mode." in prompt
+assert "Shared finish-auto worktree path:" in prompt
+assert "create/use the shared finish-auto worktree and branch" in prompt
+assert "If another phase remains, do not cherry-pick or land" in prompt
 assert "Do not claim in the report that work was committed, cherry-picked, pushed, or fully landed until that git operation has actually succeeded." in prompt
 PY
   grep -q 'fake progress' "$run_dir/chunk-001.last-message.txt"
@@ -803,6 +805,38 @@ PY
   rm -f "$outdir"/zskills-runner-reuse-handoff.out
 }
 
+test_shared_worktree_progress_validates() {
+  local repo run_dir summary wt
+  repo=$(make_multi_repo)
+  if CODEX_BIN="$FAKE_CODEX" FAKE_CODEX_MODE=shared-worktree-progress "$SCRIPT" run-plan plans/example.md finish auto --repo "$repo" --max-chunks 2 >"$outdir"/zskills-runner-shared-worktree.out 2>&1; then
+    echo "expected max-chunks stop after two validated shared-worktree chunks" >&2
+    exit 1
+  fi
+  grep -q 'runner_stop_reason=max-chunks' "$outdir"/zskills-runner-shared-worktree.out
+  run_dir=$(latest_run_dir "$repo")
+  summary="$run_dir/chunk-002.summary.json"
+  python3 -m json.tool "$summary" >/dev/null
+  wt=$(runner_value "$repo" shared_worktree_path)
+  python3 - "$run_dir/chunk-002.before-state.txt" "$run_dir/chunk-002.after-state.txt" "$summary" "$wt" <<'PY'
+import json
+import sys
+before, after, summary, wt = sys.argv[1:5]
+def value(path, key):
+    for line in open(path, encoding="utf-8"):
+        if line.startswith(key + "="):
+            return line.rstrip("\n").split("=", 1)[1]
+    return ""
+data = json.load(open(summary, encoding="utf-8"))
+assert value(before, "artifact_root") == wt
+assert value(after, "artifact_root") == wt
+assert data["validation_result"] == "passed"
+assert "plan_hash_changed" in data["progress_signals"]
+assert "report_hash_changed" in data["progress_signals"]
+PY
+  git -C "$repo" worktree remove -f "$wt" >/dev/null 2>&1 || true
+  rm -f "$outdir"/zskills-runner-shared-worktree.out
+}
+
 test_max_chunks_stops() {
   local repo run_dir summary expected_tracking_id
   repo=$(make_multi_repo)
@@ -901,6 +935,7 @@ case "$CASE" in
   fake-idle-timeout) test_fake_idle_timeout ;;
   multi-chunk) test_multi_chunk_completes ;;
   reused-handoff) test_reused_handoff_validates ;;
+  shared-worktree) test_shared_worktree_progress_validates ;;
   max-chunks) test_max_chunks_stops ;;
   cherry-pick-canary) test_cherry_pick_canary ;;
   pr-dry-run) test_pr_dry_run ;;
@@ -937,6 +972,7 @@ case "$CASE" in
     test_dirty_artifact_blocks
     test_multi_chunk_completes
     test_reused_handoff_validates
+    test_shared_worktree_progress_validates
     test_max_chunks_stops
     test_cherry_pick_canary
     test_pr_dry_run

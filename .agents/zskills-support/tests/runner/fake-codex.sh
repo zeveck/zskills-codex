@@ -55,6 +55,14 @@ contract_pipeline_id() {
   contract_value "Pipeline id" "run-plan.example"
 }
 
+contract_shared_worktree_path() {
+  contract_value "Shared finish-auto worktree path" ""
+}
+
+contract_shared_worktree_branch() {
+  contract_value "Shared finish-auto branch" "run-plan/example"
+}
+
 marker_id() {
   local suffix="$1"
   local pipeline
@@ -258,6 +266,65 @@ PY
   git -C "$REPO" commit -q -m "fixture reused handoff phase $phase progress"
 }
 
+write_shared_worktree_progress() {
+  [ -n "$REPO" ] || { echo "fake-codex: missing -C repo" >&2; exit 2; }
+  local wt branch report tracking phase tracking_id
+  wt=$(contract_shared_worktree_path)
+  branch=$(contract_shared_worktree_branch)
+  [ -n "$wt" ] || { echo "fake-codex: missing shared worktree path" >&2; exit 2; }
+  if [ ! -d "$wt" ]; then
+    git -C "$REPO" worktree add -q "$wt" -b "$branch" HEAD
+    git -C "$wt" config user.email runner@example.test
+    git -C "$wt" config user.name "Runner Test"
+  fi
+  report="$wt/reports/plan-example.md"
+  tracking=$(contract_tracking_dir)
+  mkdir -p "$(dirname "$report")" "$tracking"
+  phase=$(python3 - "$wt/plans/example.md" <<'PY'
+import re
+import sys
+path = sys.argv[1]
+text = open(path, encoding="utf-8").read()
+for match in re.finditer(r"^\| ([0-9]+)\. .*? \| ⬜ Not Started \|", text, flags=re.M):
+    print(match.group(1))
+    break
+else:
+    print("")
+PY
+)
+  [ -n "$phase" ] || { echo "fake-codex: shared plan already complete" >&2; exit 0; }
+  python3 - "$wt/plans/example.md" "$phase" <<'PY'
+import re
+import sys
+path, phase = sys.argv[1:3]
+text = open(path, encoding="utf-8").read()
+pattern = rf"^(\| {re.escape(phase)}\. .*? \| )⬜ Not Started( \|)"
+text = re.sub(pattern, rf"\1✅ Done\2", text, count=1, flags=re.M)
+open(path, "w", encoding="utf-8").write(text)
+PY
+  {
+    printf '# Example Plan Report\n\n'
+    for n in $(seq 1 "$phase"); do
+      printf '## Phase %s: Fixture Progress\n\n' "$n"
+      printf 'Status: verified.\n\n'
+      printf 'Scope Assessment:\n\n'
+      printf -- '- Fixture-only shared worktree progress for runner validation.\n\n'
+      printf 'Verification:\n\n'
+      printf -- '- fake verifier passed.\n\n'
+    done
+  } > "$report"
+  tracking_id=$(marker_id "phase-$phase")
+  printf 'implemented\n' > "$tracking/step.run-plan.$tracking_id.implement"
+  printf 'verified\n' > "$tracking/step.run-plan.$tracking_id.verify"
+  printf 'reported\n' > "$tracking/step.run-plan.$tracking_id.report"
+  printf 'required\n' > "$tracking/requires.verify-changes.$tracking_id"
+  printf 'complete\n' > "$tracking/step.verify-changes.$tracking_id.complete"
+  printf 'fulfilled\n' > "$tracking/fulfilled.verify-changes.$tracking_id"
+  printf 'handoff\n' > "$tracking/handoff.run-plan.$tracking_id"
+  git -C "$wt" add plans/example.md "$report"
+  git -C "$wt" commit -q -m "fixture shared phase $phase progress"
+}
+
 case "$MODE" in
   success)
     echo '{"event":"fake","message":"ok"}'
@@ -332,6 +399,12 @@ case "$MODE" in
     write_reused_handoff_progress
     echo '{"event":"fake","message":"reuse handoff progress"}'
     [ -z "$LAST_MESSAGE" ] || printf 'fake reuse handoff progress\n' > "$LAST_MESSAGE"
+    exit 0
+    ;;
+  shared-worktree-progress)
+    write_shared_worktree_progress
+    echo '{"event":"fake","message":"shared worktree progress"}'
+    [ -z "$LAST_MESSAGE" ] || printf 'fake shared worktree progress\n' > "$LAST_MESSAGE"
     exit 0
     ;;
   no-progress)

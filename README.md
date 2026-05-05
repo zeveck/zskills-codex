@@ -131,6 +131,8 @@ Unattended `finish auto` is runner-backed:
 The runner:
 
 - launches a fresh top-level `codex exec` process per chunk;
+- reuses one plan-level worktree/branch across chunks in cherry-pick and PR
+  modes, then lands once after the remaining phases complete;
 - never uses `codex exec resume`;
 - refuses dangerous bypass defaults;
 - refuses direct unattended mode unless explicitly enabled;
